@@ -4,7 +4,6 @@
 
 using namespace std;
 
-
 class generalFunctions{
     public:
 
@@ -419,6 +418,7 @@ class control{  // we might use flag kinda things to know what instruction has a
             else if (opcode == "000100"){
                //beq
                //here we could do checker = 2
+               checker = 2;
             }
             else if (opcode == "000010"){
                 //j
@@ -429,6 +429,7 @@ class control{  // we might use flag kinda things to know what instruction has a
             }
             else if (opcode == "100011"){
                 //lw
+                checker = 3;
             }
             else {
                 gen.terminate;
@@ -489,6 +490,15 @@ class simulator{
                 reg.setdata(destAddrs,computingU.finalResult);  //this function not yet defined (has to be defined in class registers)
             }
             //elseif other operations like bne, j etc
+            else if(contr.checker==2){
+                src1 = reg.getdata(instruction.substr(6,5));
+                src2 = reg.getdata(instruction.substr(11,5));
+                if(gen.BinaryToDecimal(src1) - gen.BinaryToDecimal(src2)==0){
+                    //increment pc to the value which the label indicates
+                }
+                
+            }
+
 
 
 
@@ -505,7 +515,7 @@ class simulator{
 00100000000100100000000000001010
 */
 
-int main(){
+int main(){ 
     simulator simulate;
     simulate.execute();
 }
