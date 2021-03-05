@@ -1,6 +1,5 @@
-#include <iostream>
-#include <vector>
-#include <string>
+#define _GLIBCXX_USE_CXX11_ABI 0
+#include <bits/stdc++.h>
 
 using namespace std;
 
@@ -12,54 +11,29 @@ class generalFunctions{
             exit(0);
         }
 
-        int power(int a, int b){
-            int ans = 1;
-            for (int i=0; i < b; i++){
-                ans = ans*a;
-            }
-            return ans;
-        }
-
-        //converts int decimal to string binary
         string DecimalToBinary(int decimalVal){
-             int i = 0, ans = 0;
-            while(decimalVal >= 2){
-                ans += power(10,i)*(decimalVal % 2);
-                decimalVal /= 2;
-                i++;
-            }
-            ans = ans + power(10,i)*(decimalVal);
-            stringstream strr;
-            strr << ans;
-            return strr.str();
-
+            string r;
+            while(decimalVal!=0) {r=(decimalVal%2==0 ?"0":"1")+r; decimalVal/=2;}
+            return r;
         }
 
-        //converts string binary to int decimal
         int BinaryToDecimal(string BinaryVal){
-            int ans = 0;
-            for (int i = 0; i < inp.length(); i++){
-                ans = ans + power(2,i)*(inp.at(inp.length() - i - 1) - '0');
-            }
-            return ans;
+            int i = std::stoi(BinaryVal,0, 2);
+            return i;
         }
-        //conversion for shamt
-        string dectobin(int n)
-       {
+        string dectobin(int n){
         // Size of an integer is assumed to be 5 bits
-       string temp;
-      for (int i = 4; i >= 0; i--) {
-        int k = n >> i;
-        if (k & 1)
-           temp=temp+"1";
-        else
-            temp=temp+"0";
+        string temp;
+        for (int i = 4; i >= 0; i--) {
+            int k = n >> i;
+            if (k & 1)
+            temp=temp+"1";
+            else
+                temp=temp+"0";
+            }
+            return temp;
         }
-        return temp;
-     }
 };
-
-
 
 
 class memory{
@@ -84,21 +58,129 @@ class memory{
 };
 
 
-
+class instructionSet{
+public:
+    // Array that holds the supported instructions
+  char instructions[13] = {"add","sub","mul","div","sll","srl","jr","lw","sw","beq","bne","j","jal"};
+    // Struct for R-Type instructions and having function codes
+struct {
+	const string name;
+	string function;
+} rMap[] = {
+		{ "add", "100000" },
+		{ "sub", "100001" },
+		{ "mul", "011000" },
+		{ "div", "011010" },
+		{ "sll", "000000" },
+		{ "srl", "000010" },
+		{ "jr",  "001000" },
+		{ NULL, 0 } };
+// Struct for I-Type instructions and opcode
+struct {
+	const string name;
+	string function;
+} 
+iMap[] = {
+		{ "lw",   "100011" },
+		{ "sw",   "101011" },
+		{ "beq",  "000100" },
+		{ "bne", "001010" },
+		{ NULL, 0 } 
+};
+// Struct for J-Type instructions and opcode
+struct {
+	const string name;
+	string function;
+} jMap[] = {
+		{ "j", "000010" },
+		{ "jal", "000011" },
+		{ NULL, 0 } };
+//funcn to search the instruction
+ string search(string current_instruction) {
+     string temp="";
+	for (int i = 0; i < instructions.length(); i++) {
+       int pos=0;
+      while(pos<3)
+		if (current_instruction.find(instructions[i],pos) == 0) {
+			temp=instructions[i];
+			break;
+		}
+		pos++;
+	}
+	if(temp!=""){
+        return temp;
+	}
+	else{
+        return NULL;
+	}
+}
+char typeOfInstruction(string current_instruction){
+    string str="invalid instruction";
+    int store;
+    string type;
+    size_t found;
+    for(int i=0;i<instructions.length();i++){
+       found=current_instruction.find(instructions[i]);
+       store=i;
+    }
+    if (found != string::npos){
+        if(store>=0 && store<=7)
+            type="r";
+            else if(store>7 && store<12)
+                type="i";
+            else
+                type="j";
+     return type;
+    }
+    else{
+        return str;
+    }
+}
+//finds the functioncode for Rtype
+string r_fncode(string instruction){
+    size_t i;
+    string func;
+	for (i = 0; rMap[i].name != NULL; i++) {                        /*check*/
+		if (instruction.compare(rMap[i].name) == 0) {
+			func = rMap[i].function;
+		}
+	}
+	return func;
+}
+//finds the opcode forItype
+string i_opcode(string instruction){
+    size_t i;
+    string func;
+	for (i = 0; iMap[i].name != NULL; i++) {
+		if (instruction.compare(iMap[i].name) == 0) {
+			func = iMap[i].function;
+		}
+	}
+	return func;
+}
+//finds the opcode for JTYPE
+string j_opcode(string instruction){
+    size_t i;
+    string func;
+	for (i = 0; jMap[i].name != NULL; i++) {
+		if (instruction.compare(jMap[i].name) == 0) {
+			func = jMap[i].function;
+		}
+	}
+	return func;
+}
+};
 
 class registers{
     public:
         //arrays for storing register values,addresses and register names
-        string REG[33]={"zero","at","v0","v1","a0","a1","a2","a3","t0","t1","t2","t3","t4","t5","t6","t7","s0","s1","s2","s3","s4","s5","s6","s7","t8","t9","k0","k1","gp","sp","fp,"ra","NULL"};
+        string REG[33]={"zero","at","v0","v1","a0","a1","a2","a3","t0","t1","t2","t3","t4","t5","t6","t7","s0","s1","s2","s3","s4","s5","s6","s7","t8","t9","k0","k1","gp","sp","fp","ra","NULL"};
         int register_values[32]={0};
         string reg_address[32]={"00000","00001","00010","00011","00100","00101","00110","00111","01000","01001","01010","01011","01100","01101","01110","01111","10000","10001","10010","10011","10100","10101","10110","10111","11000","11001","0"};
-
         generalFunctions gen;
         instructionSet inst;
-
         // setvalue of a register funct
         //void setdata(destAddrs,data_to_be_stored);
-
         // getvalue of a register funct
         string getdata(string value){
             string result;
@@ -123,14 +205,8 @@ class registers{
             }
             return temp;
         }
-
-
         //other functions required for registers
 };
-
-
-
-
 class computingUnit{ //we compute only for rtypes - add, sub, etc
     public:
         generalFunctions gen;
@@ -193,7 +269,7 @@ public:
         switch(type){
         case 'r':
             //convert R-type instruction into binary string
-            final=rtype_instruction(current instruction);
+            final=rtype_instruction(current_instruction);
             break;
         case 'i':
             //convert I-type instruction into binary string
@@ -216,7 +292,6 @@ public:
         }
         else
             current_instruction=current_instruction.substr(2);
-
         string temp="";
         char opcode="000000";
         char shamt,functionCode;
@@ -234,7 +309,6 @@ public:
                 else{
                     reg_store[1]=current_instruction.substr(3,2);
                     reg_store[2]=current_instruction.substr(6);
-
                 }
              }
              else {
@@ -254,7 +328,7 @@ public:
              for(int i=0;i<3;i++){
                 string addr=reg.findRegisterAddress(reg_store[i]);
                 temp=temp+addr;
-             }
+            }
            temp=temp+shamt;
            functionCode=obj.r_fncode(store);
            temp=temp+functionCode;
@@ -277,136 +351,17 @@ public:
         }
         //Have to write for jr
         else{
-
         }
     }
     string itype_instruction(string current_instruction){
-
     }
-
 };
-class instructionSet{
-public:
-    // Array that holds the supported instructions
-  char instructions[] = {"add","sub","mul","div","sll","srl","jr","lw","sw","beq","bne","j","jal"};
 
-
-
-    // Struct for R-Type instructions and having function codes
-struct {
-	const string name;
-	string function;
-} rMap[] = {
-		{ "add", "100000" },
-		{ "sub", "100001" },
-		{ "mul", "011000" },
-		{ "div", "011010" },
-		{ "sll", "000000" },
-		{ "srl", "000010" },
-		{ "jr",  "001000" },
-		{ NULL, 0 } };
-
-// Struct for I-Type instructions and opcode
-struct {
-	const stringname;
-	string function;
-} iMap[] = {
-		{ "lw",   "100011" },
-		{ "sw",   "101011" },
-		{ "beq",  "000100" },
-		{ "bne", "001010" },
-		{ NULL, 0 } };
-
-// Struct for J-Type instructions and opcode
-struct {
-	const string name;
-	string function;
-} jMap[] = {
-		{ "j", "000010" },
-		{ "jal", "000011" },
-		{ NULL, 0 } };
-//funcn to search the instruction
- string search(string current_instruction) {
-     string temp="";
-	for (int i = 0; i < instructions.length(); i++) {
-       int pos=0;
-      while(pos<3)
-		if (current_instruction.find(instructions[i],pos) == 0) {
-			temp=instructions[i];
-			break;
-		}
-		pos++;
-	}
-	if(temp!=""){
-        return temp;
-	}
-	else{
-        return NULL;
-	}
-}
-char typeOfInstruction(string current_instruction){
-    string str="invalid instruction";
-    int store;
-    string type;
-    size_t found;
-    for(int i=0;i<instructions.length();i++){
-       found=current_instruction.find(instructions[i]);
-       store=i;
-    }
-
-    if (found != string::npos){
-        if(store>=0 && store<=7)
-            type="r";
-            else if(store>7 && store<12)
-                type="i";
-            else
-                type="j";
-     return type;
-    }
-    else{
-        return str;
-    }
-}
-//finds the functioncode for Rtype
-string r_fncode(string instruction){
-    size_t i;
-    string func;
-	for (i = 0; rMap[i].name != NULL; i++) {
-		if (instruction.compare(rMap[i].name) == 0) {
-			func = rMap[i].function;
-		}
-	}
-	return func;
-}
-//finds the opcode forItype
-string i_opcode(string instruction){
-    size_t i;
-    string func;
-	for (i = 0; iMap[i].name != NULL; i++) {
-		if (instruction.compare(iMap[i].name) == 0) {
-			func = iMap[i].function;
-		}
-	}
-	return func;
-}
-//finds the opcode for JTYPE
-string j_opcode(string instruction){
-    size_t i;
-    string func;
-	for (i = 0; jMap[i].name != NULL; i++) {
-		if (instruction.compare(jMap[i].name) == 0) {
-			func = jMap[i].function;
-		}
-	}
-	return func;
-}
-};
 
 class control{  // we might use flag kinda things to know what instruction has appeared. for example, if 000000 is the opcode we will update flag1 (suppose) to 1, and we will use it in simulator class
     public:
         generalFunctions gen;
         int checker = 0;
-
         void checkInstruction(string opcode, string funct){
             if (opcode == "000000"){
                 if (funct == "100000" || funct == "100010"){
@@ -435,7 +390,6 @@ class control{  // we might use flag kinda things to know what instruction has a
                 gen.terminate;
             }
         }
-
         void printRegisters(registers rgstr){
             // prints in terminal
             cout << "R1: " << rgstr.REG[1] << endl;
@@ -462,8 +416,6 @@ class control{  // we might use flag kinda things to know what instruction has a
             //other registers
         }
 };
-
-
 class simulator{
     public:
         void execute(){
@@ -474,19 +426,14 @@ class simulator{
             generalFunctions gen;
             registers reg;
             memory memo;
-
             opcode = instruction.substr(0,6);
             functionCode = instruction.substr(26,6);
-
             contr.checkInstruction(opcode,functionCode);
-
             if(contr.checker==1){ //this if block is for add, sub and all such similar instructions (may include more if required)
                 src1 = reg.getdata(instruction.substr(6,5));
                 src2 = reg.getdata(instruction.substr(11,5));
                 string destAddrs = instruction.substr(16,5); //stores the adress of the destination register in binary form
-
                 computingU.compute(src1,src2,functionCode);
-
                 reg.setdata(destAddrs,computingU.finalResult);  //this function not yet defined (has to be defined in class registers)
             }
             //elseif other operations like bne, j etc
@@ -498,26 +445,16 @@ class simulator{
                 }
                 
             }
-
-
-
-
-
-
             //finally we print all registers here
             contr.printRegisters(reg);
         }
 };
-
-
 /*
 00100000000100010000000000000001
 00100000000100100000000000001010
 */
-
 int main(){ 
     simulator simulate;
     simulate.execute();
 }
-
 //end of program
