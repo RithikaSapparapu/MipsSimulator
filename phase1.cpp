@@ -386,7 +386,7 @@ public:
                string bin_val=gen.dectobin(val,32);
                Memoryword tempmemory;
                tempmemory.value=bin_val;
-               tempmemory.address=i+1;
+               tempmemory.address=gen.dectobin(i+2,26);;
                Mem.push_back(tempmemory); 
            } 
         }
@@ -463,7 +463,7 @@ public:
             temp=current_instruction.substr(j);
             Label templabel;
             templabel.labelname=temp;
-            templabel.address=programCounter+1;
+            templabel.address=gen.dectobin(programCounter+2,26);
             labeltable.push_back(templabel);
 
         }
@@ -539,7 +539,7 @@ public:
                 string addr=reg.findRegisterAddress(reg_store[i]);
                 temp=temp+addr;
              }
-             shamt=gen.dectobin(stoi(current_instruction.substr(4)));
+             shamt=gen.dectobin(stoi(current_instruction.substr(4)),5);
              temp=temp+shamt;
            functionCode=obj.r_fncode(store);
            temp=temp+functionCode;
@@ -554,6 +554,19 @@ public:
     }
     //Have to write
     string jtype_instruction(string current_instruction){
+        readInstruction(current_instruction);
+        string opcode=obj.j_opcode("j");
+        string temp="";
+        temp=temp+opcode;
+        current_instruction=current_instruction.substr(1);
+        for(int i=0;i<labeltable.size();i++){
+            if(labeltable[i].labelname==current_instruction){
+                temp=temp+labeltable[i].address;
+                break;
+            }
+        }
+        return temp;
+
     }
 };
 
