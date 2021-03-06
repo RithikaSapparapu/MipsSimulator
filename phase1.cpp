@@ -1,8 +1,6 @@
 #define _GLIBCXX_USE_CXX11_ABI 0
 #include <bits/stdc++.h>
-
 using namespace std;
-
 class generalFunctions{
     public:
 
@@ -21,10 +19,10 @@ class generalFunctions{
             int i = std::stoi(BinaryVal,0, 2);
             return i;
         }
-        string dectobin(int n){
-        // Size of an integer is assumed to be 5 bits
+        string dectobin(int n,int bits){
+        // can covert decimal to required bits
         string temp;
-        for (int i = 4; i >= 0; i--) {
+        for (int i = bits-1; i >= 0; i--) {
             int k = n >> i;
             if (k & 1)
             temp=temp+"1";
@@ -61,28 +59,32 @@ class memory{
 class instructionSet{
 public:
     // Array that holds the supported instructions
-  char instructions[13] = {"add","sub","mul","div","sll","srl","jr","lw","sw","beq","bne","j","jal"};
+  string instructions[14] = {"add","sub","mul","div","sll","slt","srl","jr","lw","sw","la","beq","bne","j"};
     // Struct for R-Type instructions and having function codes
 struct {
 	const string name;
 	string function;
-} rMap[] = {
+} rMap[9] =
+     {
 		{ "add", "100000" },
 		{ "sub", "100001" },
 		{ "mul", "011000" },
 		{ "div", "011010" },
 		{ "sll", "000000" },
 		{ "srl", "000010" },
+        { "slt", "000010" },
 		{ "jr",  "001000" },
-		{ NULL, 0 } };
+        { NULL, 0 }
+     };
 // Struct for I-Type instructions and opcode
 struct {
 	const string name;
 	string function;
 } 
-iMap[] = {
+iMap[6] = {
 		{ "lw",   "100011" },
 		{ "sw",   "101011" },
+        { "la",   "101011" },
 		{ "beq",  "000100" },
 		{ "bne", "001010" },
 		{ NULL, 0 } 
@@ -91,14 +93,14 @@ iMap[] = {
 struct {
 	const string name;
 	string function;
-} jMap[] = {
+} jMap[2] = {
 		{ "j", "000010" },
-		{ "jal", "000011" },
 		{ NULL, 0 } };
 //funcn to search the instruction
  string search(string current_instruction) {
      string temp="";
-	for (int i = 0; i < instructions.length(); i++) {
+     int n=instructions->length();
+	for (int i = 0; i <n; i++) {
        int pos=0;
       while(pos<3)
 		if (current_instruction.find(instructions[i],pos) == 0) {
@@ -114,12 +116,13 @@ struct {
         return NULL;
 	}
 }
-char typeOfInstruction(string current_instruction){
+//returns the type of instruction
+string typeOfInstruction(string current_instruction){
     string str="invalid instruction";
     int store;
     string type;
     size_t found;
-    for(int i=0;i<instructions.length();i++){
+    for(int i=0;i<instructions->length();i++){
        found=current_instruction.find(instructions[i]);
        store=i;
     }
@@ -140,7 +143,8 @@ char typeOfInstruction(string current_instruction){
 string r_fncode(string instruction){
     size_t i;
     string func;
-	for (i = 0; rMap[i].name != NULL; i++) {                        /*check*/
+    string null="NULL";
+	for (i = 0; rMap[i].name != null; i++) {                        /*check*/
 		if (instruction.compare(rMap[i].name) == 0) {
 			func = rMap[i].function;
 		}
@@ -151,7 +155,8 @@ string r_fncode(string instruction){
 string i_opcode(string instruction){
     size_t i;
     string func;
-	for (i = 0; iMap[i].name != NULL; i++) {
+    string null="NULL";
+	for (i = 0; iMap[i].name != null; i++) {
 		if (instruction.compare(iMap[i].name) == 0) {
 			func = iMap[i].function;
 		}
@@ -162,7 +167,8 @@ string i_opcode(string instruction){
 string j_opcode(string instruction){
     size_t i;
     string func;
-	for (i = 0; jMap[i].name != NULL; i++) {
+    string null="NULL";
+	for (i = 0; jMap[i].name != null; i++) {
 		if (instruction.compare(jMap[i].name) == 0) {
 			func = jMap[i].function;
 		}
@@ -228,7 +234,7 @@ public:
     registers reg;
      int typeOfInstrucn;
     //str is current_instruction
-    void removeSpacesandCommas(char *str){
+    void removeSpacesandCommas(string str){
         int count = 0;
     for (int i = 0; str[i]; i++){
         if (str[i] != ' ')
@@ -242,7 +248,7 @@ public:
       str[count1] = '\0';
     }
  }
- void removeDollar(char *str){
+ void removeDollar(string str){
         int count = 0;
     for (int i = 0; str[i]; i++){
         if (str[i] != '$')
@@ -285,7 +291,7 @@ public:
         }
     }
     string rtype_instruction(string current_instruction){
-        readinstruction(current_instruction);
+        readInstruction(current_instruction);
         string store=obj.search(current_instruction);
         if(store!="jr"){
             current_instruction=current_instruction.substr(3);
@@ -293,8 +299,8 @@ public:
         else
             current_instruction=current_instruction.substr(2);
         string temp="";
-        char opcode="000000";
-        char shamt,functionCode;
+        string opcode="000000";
+        string shamt,functionCode;
         temp=temp+opcode;
         if(store.compare("add")==0 || store.compare("sub")==0 ||store.compare("mul")==0 ||store.compare("div")==0){
              string reg_store[3];//stores src1,src2,dest
@@ -321,8 +327,9 @@ public:
                     reg_store[1]=current_instruction.substr(3,2);
                     reg_store[2]=current_instruction.substr(6);
                  }
+              }
              }
-             else{
+            else{
                 return NULL;
              }
              for(int i=0;i<3;i++){
@@ -337,13 +344,13 @@ public:
         else if(store.compare("sll")==0 || store.compare("srl")==0){
             temp=temp+"00000";
             string reg_store[2];
-            reg_store[0]=current_instruction(0,2);
-            reg_store[1]=current_instruction(2,2);
+            reg_store[0]=current_instruction.substr(0,2);
+            reg_store[1]=current_instruction.substr(2,2);
             for(int i=0;i<2;i++){
                 string addr=reg.findRegisterAddress(reg_store[i]);
                 temp=temp+addr;
              }
-             shamt=gen.dectobin(stoi(current_instruction(4)));
+             shamt=gen.dectobin(stoi(current_instruction.substr(4)));
              temp=temp+shamt;
            functionCode=obj.r_fncode(store);
            temp=temp+functionCode;
@@ -353,7 +360,11 @@ public:
         else{
         }
     }
+    //Have to write
     string itype_instruction(string current_instruction){
+    }
+    //Have to write
+    string jtype_instruction(string current_instruction){
     }
 };
 
