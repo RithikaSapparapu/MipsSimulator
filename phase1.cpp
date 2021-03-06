@@ -39,8 +39,6 @@ class memory{
         generalFunctions gen;
         string MEM[1024]; //ex: string colour[4] = { "Blue", "Red", "Orange", "Yellow" };
         string getvalue;
-
-
         //functions dealing with memory
         void getdata(string adrs){
             getvalue = MEM[gen.BinaryToDecimal(adrs)];
@@ -59,7 +57,7 @@ class memory{
 class instructionSet{
 public:
     // Array that holds the supported instructions
-  string instructions[14] = {"add","sub","mul","div","sll","slt","srl","jr","lw","sw","la","beq","bne","j"};
+  string instructions[16] = {"add","sub","mul","div","sll","slt","srl","jr","lw","sw","la","lui","addi","beq","bne","j"};
     // Struct for R-Type instructions and having function codes
 struct {
 	const string name;
@@ -72,7 +70,7 @@ struct {
 		{ "div", "011010" },
 		{ "sll", "000000" },
 		{ "srl", "000010" },
-        { "slt", "000010" },
+        { "slt", "101010" },
 		{ "jr",  "001000" },
         { NULL, 0 }
      };
@@ -81,10 +79,12 @@ struct {
 	const string name;
 	string function;
 } 
-iMap[6] = {
+iMap[8] = {
 		{ "lw",   "100011" },
 		{ "sw",   "101011" },
         { "la",   "101011" },
+        { "lui",  "001111" },
+        { "addi", "001000" },
 		{ "beq",  "000100" },
 		{ "bne", "001010" },
 		{ NULL, 0 } 
@@ -181,7 +181,9 @@ class registers{
     public:
         //arrays for storing register values,addresses and register names
         string REG[33]={"zero","at","v0","v1","a0","a1","a2","a3","t0","t1","t2","t3","t4","t5","t6","t7","s0","s1","s2","s3","s4","s5","s6","s7","t8","t9","k0","k1","gp","sp","fp","ra","NULL"};
+        registers(){
         int register_values[32]={0};
+        }
         string reg_address[32]={"00000","00001","00010","00011","00100","00101","00110","00111","01000","01001","01010","01011","01100","01101","01110","01111","10000","10001","10010","10011","10100","10101","10110","10111","11000","11001","0"};
         generalFunctions gen;
         instructionSet inst;
@@ -227,12 +229,53 @@ class computingUnit{ //we compute only for rtypes - add, sub, etc
             //elseif any other r type instructions which need to be computed
         }
 };
-class parseInstructions{
+class mipsSimulator{
 public:
     instructionSet obj;
     generalFunctions gen;
     registers reg;
-     int typeOfInstrucn;
+    memory mem_obj;
+       int programCounter;
+       int NumberOfInstructions;
+       int MaxLength;
+       vector<string> InputProgram; //to store the input program
+       struct Memoryword{
+           string value;
+           string address;
+        };
+        struct Label{
+           string labelname;
+           string address;
+        };
+        vector<struct Memoryword>Mem;
+        vector<struct Label>labeltable;
+    mipsSimulator(string fileName){
+       programCounter=0;
+       NumberOfInstructions=0;
+       MaxLength=10000;
+    }
+    void storefile(string fileName){
+    ifstream InputFile;
+	InputFile.open(fileName.c_str(),ios::in); //open file
+	if(!InputFile) //if open failed
+	{
+		cout<<"Error: File does not exist or could not be opened"<<endl;
+		exit(1);
+	}
+	string tempString;
+	while(getline(InputFile,tempString)) //read line by line
+	{
+        readInstruction(tempString);
+		NumberOfInstructions++;
+		if(NumberOfInstructions>MaxLength) ///check number of instructions with maximum allowed
+		{
+			cout<<"Error: Number of lines in input too large, maximum allowed is "<<MaxLength<<" line"<<endl;
+			exit(1);
+		}
+		InputProgram.push_back(tempString); //store in InputProgram
+	}
+	InputFile.close();
+    }
     //str is current_instruction
     void removeSpacesandCommas(string str){
         int count = 0;
@@ -259,12 +302,16 @@ public:
     void readInstruction(string current_instruction){
         if(current_instruction==""||current_instruction=="#")
             cout<<"Invalid Instruction"<<endl;
-            if(current_instruction.find("#")!=-1) //remove comments
-	          {
+             if(current_instruction.find("#")!=-1) //remove comments
+	            {
                 current_instruction=current_instruction.substr(0,current_instruction.find("#"));
-	           }
+	            }
         removeSpacesandCommas(current_instruction);
         removeDollar(current_instruction);
+
+    }
+    void reportError(int line_number){
+       cout<<"Error found in :"<<(line_number+1)<<": "<<InputProgram[line_number]<<endl;
     }
     string parseinstruction(string current_instruction){
         int key;
@@ -289,6 +336,148 @@ public:
             return NULL;
             break;
         }
+    }
+    void preprocess(){
+    int i=0,j=0;
+	int current_section=-1; //current_section=0 - data section, current_section=1 - text section
+	int index; //to hold index of ".data"
+	int flag=0; //whether "..data" found
+	//string current_instruction="";
+	int dataStart=0; //line number for start of data section
+	int textStart=0;
+    for(i=0;i<NumberOfInstructions;i++){
+        string current_instruction="";
+        current_instruction=InputProgram[i];
+        readInstruction(current_instruction);
+        index=current_instruction.find(".data");
+        if(index==-1)
+        continue;
+        else if(flag==0){
+            flag=1;
+            current_section=0;
+            dataStart=i;
+        }
+        else if(flag==1){
+            cout<<"Multiple instances of .data found"<<endl;
+            exit(1);
+        }
+    }
+    int wordindex;
+    if(current_section==0){
+        for(i=dataStart+1;i<NumberOfInstructions;i++){
+            string current_instruction="";
+            current_instruction=InputProgram[i];
+            readInstruction(current_instruction);
+            wordindex=current_instruction.find(".word");
+            int storeline;
+            if(wordindex==-1){
+                if(current_instruction.find(".text")==-1) //if text section has not started
+				{
+					cout<<"Error: Unexpected symbol in data section"<<endl;
+				}
+				else
+				{
+					break;
+				}
+            }
+           else{
+               string num=current_instruction.substr(wordindex+5);
+               int val=stoi(num);
+               string bin_val=gen.dectobin(val,32);
+               Memoryword tempmemory;
+               tempmemory.value=bin_val;
+               tempmemory.address=i+1;
+               Mem.push_back(tempmemory); 
+           } 
+        }
+    }
+    for(i=0;Mem.size()>0 && i<Mem.size()-1;i++) //check for duplicates
+	{
+		if(Mem[i].value==Mem[i+1].value)
+		{
+			cout<<"Error: One or more labels are repeated"<<endl;
+			exit(1);
+		}
+	}
+    int textIndex=0;
+    int textFlag=0;
+
+    for(i=programCounter;i<NumberOfInstructions;i++)
+	{
+        string current_instruction=InputProgram[i];
+		readInstruction(current_instruction);
+		if(current_instruction=="")
+		{
+			continue;
+		}
+		textIndex=current_instruction.find(".text"); //find text section similar as above
+		if(textIndex==-1)
+		{
+			continue;
+		}
+		else if(textFlag==0)
+		{
+			textFlag=1;
+			current_section=1;
+			textStart=i;
+		}
+		else if(textFlag==1)
+		{
+			cout<<"Error: Multiple instances of .text"<<endl;
+			reportError(i);
+		}
+	}
+    if(current_section!=1) //if text section not found
+	{
+		cout<<"Error: Text section does not exist or found unknown string"<<endl;
+		exit(1);
+	}
+    if(InputProgram[textStart+1]!=".globl main"){
+         cout<<"Error: No (.globl main) found"<<endl;
+		exit(1);
+    }
+    int foundmain=0;
+    int main_index=0,labelindex=-1;
+    if(InputProgram[textStart+2]!=".main"){
+         cout<<"Error: No main found"<<endl;
+		exit(1);
+    }
+    else{
+        foundmain=1;
+        main_index=textStart+2;
+    }
+    for(int i=main_index;i<NumberOfInstructions;i++){
+        string current_instruction=InputProgram[i];
+		readInstruction(current_instruction);
+        labelindex=current_instruction.find(":");
+        if(labelindex==0){
+            cout<<"Error : Label name expected"<<endl;
+            reportError(i);
+        }
+        else if(labelindex==-1){
+            continue;
+        }
+        else{
+            j=labelindex-1;
+            string temp="";
+            temp=current_instruction.substr(j);
+            Label templabel;
+            templabel.labelname=temp;
+            templabel.address=programCounter+1;
+            labeltable.push_back(templabel);
+
+        }
+    }
+    for(i=0;labeltable.size()>0 && i<(labeltable.size()-1);i++) //check for duplicates
+	{
+		if(labeltable[i].labelname==labeltable[i+1].labelname)
+		{
+			cout<<"Error: One or more labels are repeated"<<endl;
+			exit(1);
+		}
+	}
+
+
     }
     string rtype_instruction(string current_instruction){
         readInstruction(current_instruction);
