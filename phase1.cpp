@@ -183,9 +183,15 @@ class registers{
         string REG[33]={"zero","at","v0","v1","a0","a1","a2","a3","t0","t1","t2","t3","t4","t5","t6","t7","s0","s1","s2","s3","s4","s5","s6","s7","t8","t9","k0","k1","gp","sp","fp","ra","NULL"};
         registers(){
         int register_values[32]={0};
+        string reg_address[33];
+        for(int i=0;i<32;i++){
+            reg_address[i]=gen.dectobin(i,5);
         }
-        string reg_address[32]={"00000","00001","00010","00011","00100","00101","00110","00111","01000","01001","01010","01011","01100","01101","01110","01111","10000","10001","10010","10011","10100","10101","10110","10111","11000","11001","0"};
+        reg_address[32]="0";
+     }
+        string reg_address[33];
         generalFunctions gen;
+        
         instructionSet inst;
         // setvalue of a register funct
         //void setdata(destAddrs,data_to_be_stored);
@@ -237,11 +243,11 @@ public:
     memory mem_obj;
        int programCounter;
        int NumberOfInstructions;
-       int MaxLength;
+       int MaxLength;//10000
        vector<string> InputProgram; //to store the input program
        struct Memoryword{
            string value;
-           string address;
+           string address;//pc line number
         };
         struct Label{
            string labelname;
@@ -265,7 +271,7 @@ public:
 	string tempString;
 	while(getline(InputFile,tempString)) //read line by line
 	{
-        readInstruction(tempString);
+       //readInstruction(tempString);
 		NumberOfInstructions++;
 		if(NumberOfInstructions>MaxLength) ///check number of instructions with maximum allowed
 		{
@@ -300,9 +306,7 @@ public:
     }
  }
     void readInstruction(string current_instruction){
-        if(current_instruction==""||current_instruction=="#")
-            cout<<"Invalid Instruction"<<endl;
-             if(current_instruction.find("#")!=-1) //remove comments
+            if(current_instruction.find("#")!=-1) //remove comments
 	            {
                 current_instruction=current_instruction.substr(0,current_instruction.find("#"));
 	            }
@@ -313,6 +317,7 @@ public:
     void reportError(int line_number){
        cout<<"Error found in :"<<(line_number+1)<<": "<<InputProgram[line_number]<<endl;
     }
+    //parses r,i,j type
     string parseinstruction(string current_instruction){
         int key;
         readInstruction(current_instruction);
@@ -344,6 +349,7 @@ public:
             break;
         }
     }
+    //program read->line by line->datasegement->.word->struct->store in struct
     void preprocess(){
     int i=0,j=0;
 	int current_section=-1; //current_section=0 - data section, current_section=1 - text section
@@ -389,12 +395,10 @@ public:
             }
            else{
                string num=current_instruction.substr(wordindex+5);
-               int val=stoi(num);
-               string bin_val=gen.dectobin(val,32);
                Memoryword tempmemory;
-               tempmemory.value=bin_val;
-               tempmemory.address=gen.dectobin(i+2,26);;
-               Mem.push_back(tempmemory); 
+               tempmemory.value=num;
+               tempmemory.address=to_string(i+1);;
+               Mem.push_back(tempmemory);
            } 
         }
     }
@@ -445,7 +449,7 @@ public:
     }
     int foundmain=0;
     int main_index=0,labelindex=-1;
-    if(InputProgram[textStart+2]!=".main"){
+    if(InputProgram[textStart+2]!="main:"){
          cout<<"Error: No main found"<<endl;
 		exit(1);
     }
@@ -453,7 +457,7 @@ public:
         foundmain=1;
         main_index=textStart+2;
     }
-    for(int i=main_index;i<NumberOfInstructions;i++){
+    for(int i=main_index+1;i<NumberOfInstructions;i++){
         string current_instruction=InputProgram[i];
 		readInstruction(current_instruction);
         labelindex=current_instruction.find(":");
@@ -470,7 +474,7 @@ public:
             temp=current_instruction.substr(j);
             Label templabel;
             templabel.labelname=temp;
-            templabel.address=gen.dectobin(programCounter+2,26);
+            templabel.address=to_string(i+1);
             labeltable.push_back(templabel);
 
         }
@@ -483,9 +487,7 @@ public:
 			exit(1);
 		}
 	}
-
-
-    }
+}
     string rtype_instruction(string current_instruction){
         readInstruction(current_instruction);
         string store=obj.search(current_instruction);
@@ -598,7 +600,9 @@ public:
              int foundlabel=0;
              for(int i=0;i<labeltable.size();i++){
             if(current_instruction.find(labeltable[i].labelname)!=-1){
-                temp=temp+labeltable[i].address;
+                int val=stoi(labeltable[i].address);
+                string temp_val=gen.dectobin(val,16);
+                temp=temp+temp_val;
                 foundlabel=1;
                 break;
             }
@@ -645,7 +649,10 @@ public:
         current_instruction=current_instruction.substr(1);
         for(int i=0;i<labeltable.size();i++){
             if(labeltable[i].labelname==current_instruction){
-                temp=temp+labeltable[i].address;
+                int val=stoi(labeltable[i].address);
+                string temp_val=gen.dectobin(val,26);
+                temp=temp+temp_val;
+                //temp=temp+labeltable[i].address;
                 break;
             }
         }
