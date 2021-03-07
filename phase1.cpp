@@ -317,18 +317,25 @@ public:
         int key;
         readInstruction(current_instruction);
         string instructn=obj.search(current_instruction);
-        char type=obj.typeOfInstruction(instructn);
+        string type=obj.typeOfInstruction(instructn);
+        if(type=="r")
+        key=1;
+        else if(type=="i")
+        key=2;
+        else
+        key=3;
+
         string final="";
-        switch(type){
-        case 'r':
+        switch(key){
+        case 1:
             //convert R-type instruction into binary string
             final=rtype_instruction(current_instruction);
             break;
-        case 'i':
+        case 2:
             //convert I-type instruction into binary string
             final=itype_instruction(current_instruction);
             break;
-        case 'j':
+        case 3:
             //convert J-type instruction into binary string
              final=jtype_instruction(current_instruction);
             break;
@@ -482,16 +489,17 @@ public:
     string rtype_instruction(string current_instruction){
         readInstruction(current_instruction);
         string store=obj.search(current_instruction);
-        if(store!="jr"){
-            current_instruction=current_instruction.substr(3);
-        }
-        else
-            current_instruction=current_instruction.substr(2);
-        string temp="";
+         string temp="";
         string opcode="000000";
         string shamt,functionCode;
+        if(store=="jr"){
+            current_instruction=current_instruction.substr(2);
+            temp="00000011111000000000000000001000";
+        }
+        else{
+            current_instruction=current_instruction.substr(3);
         temp=temp+opcode;
-        if(store.compare("add")==0 || store.compare("sub")==0 ||store.compare("mul")==0 ||store.compare("div")==0){
+        if(store.compare("add")==0 || store.compare("sub")==0 ||store.compare("mul")==0 ||store.compare("div")==0||store.compare("slt")==0){
              string reg_store[3];//stores src1,src2,dest
              shamt="00000";
              if(current_instruction.find("at")!=-1){
@@ -528,7 +536,6 @@ public:
            temp=temp+shamt;
            functionCode=obj.r_fncode(store);
            temp=temp+functionCode;
-           return temp;
         }
         else if(store.compare("sll")==0 || store.compare("srl")==0){
             temp=temp+"00000";
@@ -543,16 +550,93 @@ public:
              temp=temp+shamt;
            functionCode=obj.r_fncode(store);
            temp=temp+functionCode;
-           return temp;
         }
-        //Have to write for jr
-        else{
-        }
-    }
-    //Have to write
+      }
+      return temp;
+   }
+    //Parsing itype instructions
     string itype_instruction(string current_instruction){
+        readInstruction(current_instruction);
+        string store=obj.search(current_instruction);
+         string temp="";
+         string opcode,immediate,reg_store[2];
+         if(store=="lw"||store=="sw"){
+             opcode=obj.i_opcode(store);
+             temp=temp+opcode;
+             current_instruction=current_instruction.substr(2);
+             reg_store[1]=current_instruction.substr(0,2);
+             int search=current_instruction.find("(");
+             int temp_imm=stoi(current_instruction.substr(2,search-2));
+             immediate=gen.dectobin(temp_imm,16);
+             reg_store[0]=current_instruction.substr(search+1,2);
+             for(int i=0;i<2;i++){
+                string addr=reg.findRegisterAddress(reg_store[i]);
+                temp=temp+addr;
+             }
+             temp=temp+immediate;
+         }
+         else if(store=="beq"||store=="bne"){
+             opcode=obj.i_opcode(store);
+             temp=temp+opcode;
+             current_instruction=current_instruction.substr(3);
+             if(current_instruction.substr(0,2)!="ze"){
+             reg_store[0]=current_instruction.substr(0,2);
+             if(current_instruction.substr(2,2)!="ze")
+             reg_store[1]=current_instruction.substr(2,2);
+             else
+             reg_store[1]=current_instruction.substr(2,4);
+             }
+             else{
+             reg_store[0]=current_instruction.substr(0,4);
+             if(current_instruction.substr(4,2)!="ze")
+             reg_store[1]=current_instruction.substr(4,2);
+             }
+            for(int i=0;i<2;i++){
+                string addr=reg.findRegisterAddress(reg_store[i]);
+                temp=temp+addr;
+             }
+             int foundlabel=0;
+             for(int i=0;i<labeltable.size();i++){
+            if(current_instruction.find(labeltable[i].labelname)!=-1){
+                temp=temp+labeltable[i].address;
+                foundlabel=1;
+                break;
+            }
+        }
+        if(foundlabel==0){
+            cout<<"Invalid label name"<<endl;
+            exit(1);
+        }
+        else{
+            return temp;
+        }
     }
-    //Have to write
+         else if(store=="addi"){
+            opcode=obj.i_opcode(store);
+            temp=temp+opcode;
+            current_instruction=current_instruction.substr(4);
+            reg_store[0]=current_instruction.substr(0,2);
+            current_instruction=current_instruction.substr(0,2);
+            if(current_instruction.find("zero")!=-1){
+            reg_store[1]=current_instruction.substr(0,2);
+            current_instruction=current_instruction.substr(0,2);
+
+            }
+            else{
+                 reg_store[1]=current_instruction.substr(0,4);
+                 current_instruction=current_instruction.substr(0,4);
+            }
+            int temp_imm=stoi(current_instruction);
+            immediate=gen.dectobin(temp_imm,16);
+             for(int i=0;i<2;i++){
+                string addr=reg.findRegisterAddress(reg_store[i]);
+                temp=temp+addr;
+             }
+             temp=temp+immediate;
+         }
+
+    }
+    //Parsing jtype instructions
     string jtype_instruction(string current_instruction){
         readInstruction(current_instruction);
         string opcode=obj.j_opcode("j");
