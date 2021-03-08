@@ -33,226 +33,10 @@ class generalFunctions{
         }
 };
 
-
-class memory{
-    public:
-        generalFunctions gen;
-        string MEM[1024]; //ex: string colour[4] = { "Blue", "Red", "Orange", "Yellow" };
-        string getvalue;
-        //functions dealing with memory
-        void getdata(string adrs){
-            getvalue = MEM[gen.BinaryToDecimal(adrs)];
-        }
-
-
-        void setdata(string adrs,int data){
-            if (gen.DecimalToBinary(data).length() > 32){
-                    gen.terminate();
-                }
-                MEM[gen.BinaryToDecimal(adrs)] = gen.DecimalToBinary(data);
-        }
-};
-
-
-class instructionSet{
-public:
-    // Array that holds the supported instructions
-  string instructions[16] = {"add","sub","mul","div","sll","slt","srl","jr","lw","sw","la","lui","addi","beq","bne","j"};
-    // Struct for R-Type instructions and having function codes
-struct {
-	const string name;
-	string function;
-} rMap[9] =
-     {
-		{ "add", "100000" },
-		{ "sub", "100001" },
-		{ "mul", "011000" },
-		{ "div", "011010" },
-		{ "sll", "000000" },
-		{ "srl", "000010" },
-        { "slt", "101010" },
-		{ "jr",  "001000" },
-        { NULL, 0 }
-     };
-// Struct for I-Type instructions and opcode
-struct {
-	const string name;
-	string function;
-} 
-iMap[8] = {
-		{ "lw",   "100011" },
-		{ "sw",   "101011" },
-        { "la",   "101011" },
-        { "lui",  "001111" },
-        { "addi", "001000" },
-		{ "beq",  "000100" },
-		{ "bne", "001010" },
-		{ NULL, 0 } 
-};
-// Struct for J-Type instructions and opcode
-struct {
-	const string name;
-	string function;
-} jMap[2] = {
-		{ "j", "000010" },
-		{ NULL, 0 } };
-//funcn to search the instruction
- string search(string current_instruction) {
-     string temp="";
-     int n=instructions->length();
-	for (int i = 0; i <n; i++) {
-       int pos=0;
-      while(pos<3)
-		if (current_instruction.find(instructions[i],pos) == 0) {
-			temp=instructions[i];
-			break;
-		}
-		pos++;
-	}
-	if(temp!=""){
-        return temp;
-	}
-	else{
-        return NULL;
-	}
-}
-//returns the type of instruction
-string typeOfInstruction(string current_instruction){
-    string str="invalid instruction";
-    int store;
-    string type;
-    size_t found;
-    for(int i=0;i<instructions->length();i++){
-       found=current_instruction.find(instructions[i]);
-       store=i;
-    }
-    if (found != string::npos){
-        if(store>=0 && store<=7)
-            type="r";
-            else if(store>7 && store<12)
-                type="i";
-            else
-                type="j";
-     return type;
-    }
-    else{
-        return str;
-    }
-}
-//finds the functioncode for Rtype
-string r_fncode(string instruction){
-    size_t i;
-    string func;
-    string null="NULL";
-	for (i = 0; rMap[i].name != null; i++) {                        /*check*/
-		if (instruction.compare(rMap[i].name) == 0) {
-			func = rMap[i].function;
-		}
-	}
-	return func;
-}
-//finds the opcode forItype
-string i_opcode(string instruction){
-    size_t i;
-    string func;
-    string null="NULL";
-	for (i = 0; iMap[i].name != null; i++) {
-		if (instruction.compare(iMap[i].name) == 0) {
-			func = iMap[i].function;
-		}
-	}
-	return func;
-}
-//finds the opcode for JTYPE
-string j_opcode(string instruction){
-    size_t i;
-    string func;
-    string null="NULL";
-	for (i = 0; jMap[i].name != null; i++) {
-		if (instruction.compare(jMap[i].name) == 0) {
-			func = jMap[i].function;
-		}
-	}
-	return func;
-}
-};
-
-class registers{
-    public:
-        //arrays for storing register values,addresses and register names
-        string REG[33]={"zero","at","v0","v1","a0","a1","a2","a3","t0","t1","t2","t3","t4","t5","t6","t7","s0","s1","s2","s3","s4","s5","s6","s7","t8","t9","k0","k1","gp","sp","fp","ra","NULL"};
-        registers(){
-        int register_values[32]={0};
-        string reg_address[33];
-        for(int i=0;i<32;i++){
-            reg_address[i]=gen.dectobin(i,5);
-        }
-        reg_address[32]="0";
-     }
-        string reg_address[33];
-        generalFunctions gen;
-        
-        instructionSet inst;
-        // setvalue of a register funct
-        //void setdata(destAddrs,data_to_be_stored);
-	void setdata(string destAddrs,int data_to_be_stored){
-            REG[gen.BinaryToDecimal(destAddrs)] = gen.DecimalToBinary(data_to_be_stored);
-        }
-	
-        // getvalue of a register funct
-        string getdata(string value){
-            string result;
-            if(value == "00000"){
-                result = "0";   //R0 will have zero stored inside it.
-            }
-            else{
-                result = REG[gen.BinaryToDecimal(value)];
-            }
-            return result;
-        }
-        //finds the address of given register
-        string findRegisterAddress(string str){
-            string temp;
-            int pos;
-            for(int i=0;i<32;i++){
-                if(str.find(REG[i])!=string::npos){
-                   pos=i;
-                   temp=reg_address[pos];
-                   break;
-                }
-            }
-            return temp;
-        }
-        //other functions required for registers
-};
-class computingUnit{ //we compute only for rtypes - add, sub, etc
-    public:
-        generalFunctions gen;
-        int finalResult;
-        void compute(string source1, string source2, string funct){ //funct is function code that identifies the specific R type instruction
-            if (funct == "100000"){	//add
-                finalResult = gen.BinaryToDecimal(source1) + gen.BinaryToDecimal(source2);
-            }
-            else if(funct == "100010"){		//sub
-                finalResult = gen.BinaryToDecimal(source1) - gen.BinaryToDecimal(source2);
-            }
-	    else if(funct == "101010"){		//slt
-                if(gen.BinaryToDecimal(source1)<gen.BinaryToDecimal(source2)){
-                    finalResult = 1;
-                }
-                else{
-                    finalResult = 0;
-                }
-            }
-            //elseif any other r type instructions which need to be computed
-        }
-};
 class mipsSimulator{
 public:
-    instructionSet obj;
     generalFunctions gen;
-    registers reg;
-    memory mem_obj;
+    int MEM[1024];
        int programCounter;
        int NumberOfInstructions;
        int MaxLength;//10000
@@ -267,554 +51,462 @@ public:
         };
         vector<struct Memoryword>Mem;
         vector<struct Label>labeltable;
+         int register_values[32]={0};
+         string REG[32]={"zero","at","v0","v1","a0","a1","a2","a3","t0","t1","t2","t3","t4","t5","t6","t7","s0","s1","s2","s3","s4","s5","s6","s7","t8","t9","k0","k1","gp","sp","fp","ra"};
+        string instructions[16] = {"add","sub","mul","div","sll","slt","srl","jr","lw","sw","la","lui","addi","beq","bne","j"};
     mipsSimulator(string fileName){
        programCounter=0;
        NumberOfInstructions=0;
        MaxLength=10000;
+
+
+        ifstream InputFile;
+        InputFile.open(fileName.c_str(),ios::in); //open file
+        if(!InputFile) //if open failed
+        {
+            cout<<"Error: File does not exist or could not be opened"<<endl;
+            exit(1);
+        }
+        string tempString;
+        while(getline(InputFile,tempString)) //read line by line
+        {
+        //readInstruction(tempString);
+            NumberOfInstructions++;
+            if(NumberOfInstructions>MaxLength) ///check number of instructions with maximum allowed
+            {
+                cout<<"Error: Number of lines in input too large, maximum allowed is "<<MaxLength<<" line"<<endl;
+                exit(1);
+            }
+            InputProgram.push_back(tempString); //store in InputProgram
+        }
+        InputFile.close();
+
     }
-    void storefile(string fileName){
-    ifstream InputFile;
-	InputFile.open(fileName.c_str(),ios::in); //open file
-	if(!InputFile) //if open failed
-	{
-		cout<<"Error: File does not exist or could not be opened"<<endl;
-		exit(1);
-	}
-	string tempString;
-	while(getline(InputFile,tempString)) //read line by line
-	{
-       //readInstruction(tempString);
-		NumberOfInstructions++;
-		if(NumberOfInstructions>MaxLength) ///check number of instructions with maximum allowed
-		{
-			cout<<"Error: Number of lines in input too large, maximum allowed is "<<MaxLength<<" line"<<endl;
-			exit(1);
-		}
-		InputProgram.push_back(tempString); //store in InputProgram
-	}
-	InputFile.close();
-    }
-    //str is current_instruction
+
+
     void removeSpacesandCommas(string str){
         int count = 0;
-    for (int i = 0; str[i]; i++){
-        if (str[i] != ' ')
-            str[count++] = str[i];
-      str[count] = '\0';
+        for (int i = 0; str[i]; i++){
+            if (str[i] != ' ')
+                str[count++] = str[i];
+        str[count] = '\0';
+        }
+        int count1= 0;
+        for (int j = 0; str[j]; j++){
+            if (str[j] != ',')
+                str[count1++] = str[j];
+        str[count1] = '\0';
+        }
     }
-    int count1= 0;
-    for (int j = 0; str[j]; j++){
-        if (str[j] != ',')
-            str[count1++] = str[j];
-      str[count1] = '\0';
+    void removeDollar(string str){
+            int count = 0;
+        for (int i = 0; str[i]; i++){
+            if (str[i] != '$')
+                str[count++] = str[i];
+        str[count] = '\0';
+        }
     }
- }
- void removeDollar(string str){
-        int count = 0;
-    for (int i = 0; str[i]; i++){
-        if (str[i] != '$')
-            str[count++] = str[i];
-      str[count] = '\0';
-    }
- }
-    void readInstruction(string current_instruction){
-            if(current_instruction.find("#")!=-1) //remove comments
-	            {
-                current_instruction=current_instruction.substr(0,current_instruction.find("#"));
-	            }
-        removeSpacesandCommas(current_instruction);
-        removeDollar(current_instruction);
+        string readInstruction(string current_instruction){
+                if(current_instruction.find("#")!=-1) //remove comments
+                    {
+                    current_instruction=current_instruction.substr(0,current_instruction.find("#"));
+                    }
+            removeSpacesandCommas(current_instruction);
+            removeDollar(current_instruction);
 
-    }
-    void reportError(int line_number){
-       cout<<"Error found in :"<<(line_number+1)<<": "<<InputProgram[line_number]<<endl;
-    }
-    //parses r,i,j type
-    string parseinstruction(string current_instruction){
-        int key;
-        readInstruction(current_instruction);
-        string instructn=obj.search(current_instruction);
-        string type=obj.typeOfInstruction(instructn);
-        if(type=="r")
-        key=1;
-        else if(type=="i")
-        key=2;
-        else
-        key=3;
+            return current_instruction;
+        }
 
-        string final="";
-        switch(key){
-        case 1:
-            //convert R-type instruction into binary string
-            final=rtype_instruction(current_instruction);
-            break;
-        case 2:
-            //convert I-type instruction into binary string
-            final=itype_instruction(current_instruction);
-            break;
-        case 3:
-            //convert J-type instruction into binary string
-             final=jtype_instruction(current_instruction);
-            break;
-        default:
-            return NULL;
-            break;
+        void reportError(int line_number){
+            cout<<"Error found in :"<<(line_number+1)<<": "<<InputProgram[line_number]<<endl;
         }
-    }
-    //program read->line by line->datasegement->.word->struct->store in struct
-    void preprocess(){
-    int i=0,j=0;
-	int current_section=-1; //current_section=0 - data section, current_section=1 - text section
-	int index; //to hold index of ".data"
-	int flag=0; //whether "..data" found
-	//string current_instruction="";
-	int dataStart=0; //line number for start of data section
-	int textStart=0;
-    for(i=0;i<NumberOfInstructions;i++){
-        string current_instruction="";
-        current_instruction=InputProgram[i];
-        readInstruction(current_instruction);
-        index=current_instruction.find(".data");
-        if(index==-1)
-        continue;
-        else if(flag==0){
-            flag=1;
-            current_section=0;
-            dataStart=i;
-        }
-        else if(flag==1){
-            cout<<"Multiple instances of .data found"<<endl;
-            exit(1);
-        }
-    }
-    int wordindex;
-    if(current_section==0){
-        for(i=dataStart+1;i<NumberOfInstructions;i++){
-            string current_instruction="";
-            current_instruction=InputProgram[i];
-            readInstruction(current_instruction);
-            wordindex=current_instruction.find(".word");
-            int storeline;
-            if(wordindex==-1){
-                if(current_instruction.find(".text")==-1) //if text section has not started
-				{
-					cout<<"Error: Unexpected symbol in data section"<<endl;
-				}
-				else
-				{
-					break;
-				}
-            }
-           else{
-               string num=current_instruction.substr(wordindex+5);
-               Memoryword tempmemory;
-               tempmemory.value=num;
-               tempmemory.address=to_string(i+1);;
-               Mem.push_back(tempmemory);
-           } 
-        }
-    }
-    for(i=0;Mem.size()>0 && i<Mem.size()-1;i++) //check for duplicates
-	{
-		if(Mem[i].value==Mem[i+1].value)
-		{
-			cout<<"Error: One or more labels are repeated"<<endl;
-			exit(1);
-		}
-	}
-    int textIndex=0;
-    int textFlag=0;
 
-    for(i=programCounter;i<NumberOfInstructions;i++)
-	{
-        string current_instruction=InputProgram[i];
-		readInstruction(current_instruction);
-		if(current_instruction=="")
-		{
-			continue;
-		}
-		textIndex=current_instruction.find(".text"); //find text section similar as above
-		if(textIndex==-1)
-		{
-			continue;
-		}
-		else if(textFlag==0)
-		{
-			textFlag=1;
-			current_section=1;
-			textStart=i;
-		}
-		else if(textFlag==1)
-		{
-			cout<<"Error: Multiple instances of .text"<<endl;
-			reportError(i);
-		}
-	}
-    if(current_section!=1) //if text section not found
-	{
-		cout<<"Error: Text section does not exist or found unknown string"<<endl;
-		exit(1);
-	}
-    if(InputProgram[textStart+1]!=".globl main"){
-         cout<<"Error: No (.globl main) found"<<endl;
-		exit(1);
-    }
-    int foundmain=0;
-    int main_index=0,labelindex=-1;
-    if(InputProgram[textStart+2]!="main:"){
-         cout<<"Error: No main found"<<endl;
-		exit(1);
-    }
-    else{
-        foundmain=1;
-        main_index=textStart+2;
-    }
-    for(int i=main_index+1;i<NumberOfInstructions;i++){
-        string current_instruction=InputProgram[i];
-		readInstruction(current_instruction);
-        labelindex=current_instruction.find(":");
-        if(labelindex==0){
-            cout<<"Error : Label name expected"<<endl;
-            reportError(i);
-        }
-        else if(labelindex==-1){
-            continue;
-        }
-        else{
-            j=labelindex-1;
-            string temp="";
-            temp=current_instruction.substr(j);
-            Label templabel;
-            templabel.labelname=temp;
-            templabel.address=to_string(i+1);
-            labeltable.push_back(templabel);
 
-        }
-    }
-    for(i=0;labeltable.size()>0 && i<(labeltable.size()-1);i++) //check for duplicates
-	{
-		if(labeltable[i].labelname==labeltable[i+1].labelname)
-		{
-			cout<<"Error: One or more labels are repeated"<<endl;
-			exit(1);
-		}
-	}
-}
-    string rtype_instruction(string current_instruction){
-        readInstruction(current_instruction);
-        string store=obj.search(current_instruction);
-         string temp="";
-        string opcode="000000";
-        string shamt,functionCode;
-        if(store=="jr"){
-            current_instruction=current_instruction.substr(2);
-            temp="00000011111000000000000000001000";
-        }
-        else{
-            current_instruction=current_instruction.substr(3);
-        temp=temp+opcode;
-        if(store.compare("add")==0 || store.compare("sub")==0 ||store.compare("mul")==0 ||store.compare("div")==0||store.compare("slt")==0){
-             string reg_store[3];//stores src1,src2,dest
-             shamt="00000";
-             if(current_instruction.find("at")!=-1){
-             if(current_instruction.substr(0,4)=="zero"){
-             reg_store[0]=current_instruction.substr(0,4);
-                if(current_instruction.substr(4,4)=="zero"){
-                   reg_store[1]=current_instruction.substr(4,4);
-                   reg_store[2]=current_instruction.substr(8);
-                   }
-                else{
-                    reg_store[1]=current_instruction.substr(3,2);
-                    reg_store[2]=current_instruction.substr(6);
+
+
+
+
+        void preprocess(){
+            int i=0,j=0;
+            int current_section=-1; //current_section=0 - data section, current_section=1 - text section
+            int index; //to hold index of ".data"
+            int flag=0; //whether "..data" found
+            //string current_instruction="";
+            int dataStart=0; //line number for start of data section
+            int textStart=0;
+            for(i=0;i<NumberOfInstructions;i++){
+                string current_instruction="";
+                current_instruction=InputProgram[i];
+                current_instruction = readInstruction(current_instruction);
+                index=current_instruction.find(".data");
+                if(index==-1)
+                continue;
+                else if(flag==0){
+                    flag=1;
+                    current_section=0;
+                    dataStart=i;
                 }
-             }
-             else {
-             reg_store[0]=current_instruction.substr(0,2);
-             if(current_instruction.substr(2,4)=="zero"){
-                   reg_store[1]=current_instruction.substr(4,4);
-                   reg_store[2]=current_instruction.substr(8);
-                   }
+                else if(flag==1){
+                    cout<<"Multiple instances of .data found"<<endl;
+                    exit(1);
+                }
+            }
+            int wordindex;
+            if(current_section==0){
+                for(i=dataStart+1;i<NumberOfInstructions;i++){
+                    string current_instruction="";
+                    current_instruction=InputProgram[i];
+                    current_instruction = readInstruction(current_instruction);
+                    wordindex=current_instruction.find(".word");
+                    int storeline;
+                    if(wordindex==-1){
+                        if(current_instruction.find(".text")==-1) //if text section has not started
+                        {
+                            cout<<"Error: Unexpected symbol in data section"<<endl;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
                 else{
-                    reg_store[1]=current_instruction.substr(3,2);
-                    reg_store[2]=current_instruction.substr(6);
-                 }
-              }
-             }
+                    string num=current_instruction.substr(wordindex+5);
+                    Memoryword tempmemory;
+                    tempmemory.value=num;
+                    tempmemory.address=to_string(i+1);;
+                    Mem.push_back(tempmemory);
+                } 
+                }
+            }
+            for(i=0;Mem.size()>0 && i<Mem.size()-1;i++) //check for duplicates
+            {
+                if(Mem[i].value==Mem[i+1].value)
+                {
+                    cout<<"Error: One or more labels are repeated"<<endl;
+                    exit(1);
+                }
+            }
+            int textIndex=0;
+            int textFlag=0;
+
+            for(i=programCounter;i<NumberOfInstructions;i++)
+            {
+                string current_instruction=InputProgram[i];
+                current_instruction = readInstruction(current_instruction);
+                if(current_instruction=="")
+                {
+                    continue;
+                }
+                textIndex=current_instruction.find(".text"); //find text section similar as above
+                if(textIndex==-1)
+                {
+                    continue;
+                }
+                else if(textFlag==0)
+                {
+                    textFlag=1;
+                    current_section=1;
+                    textStart=i;
+                }
+                else if(textFlag==1)
+                {
+                    cout<<"Error: Multiple instances of .text"<<endl;
+                    reportError(i);
+                }
+            }
+            if(current_section!=1) //if text section not found
+            {
+                cout<<"Error: Text section does not exist or found unknown string"<<endl;
+                exit(1);
+            }
+            if(InputProgram[textStart+1]!=".globl main"){
+                cout<<"Error: No (.globl main) found"<<endl;
+                exit(1);
+            }
+            int foundmain=0;
+            int main_index=0,labelindex=-1;
+            if(InputProgram[textStart+2]!="main:"){
+                cout<<"Error: No main found"<<endl;
+                exit(1);
+            }
+            else{
+                foundmain=1;
+                main_index=textStart+2;
+            }
+            for(int i=main_index+1;i<NumberOfInstructions;i++){
+                string current_instruction=InputProgram[i];
+                current_instruction = readInstruction(current_instruction);
+                labelindex=current_instruction.find(":");
+                if(labelindex==0){
+                    cout<<"Error : Label name expected"<<endl;
+                    reportError(i);
+                }
+                else if(labelindex==-1){
+                    continue;
+                }
+                else{
+                    j=labelindex-1;
+                    string temp="";
+                    temp=current_instruction.substr(j);
+                    Label templabel;
+                    templabel.labelname=temp;
+                    templabel.address=to_string(i+1);
+                    labeltable.push_back(templabel);
+
+                }
+            }
+            for(i=0;labeltable.size()>0 && i<(labeltable.size()-1);i++) //check for duplicates
+            {
+                if(labeltable[i].labelname==labeltable[i+1].labelname)
+                {
+                    cout<<"Error: One or more labels are repeated"<<endl;
+                    exit(1);
+                }
+            }
+        }
+
+
+        string search(string current_instruction) {
+            string temp="";
+            int n=instructions->length();
+            for (int i = 0; i <n; i++) {
+            int pos=0;
+            while(pos<3)
+                if (current_instruction.find(instructions[i],pos) == 0) {
+                    temp=instructions[i];
+                    break;
+                }
+                pos++;
+            }
+            if(temp!=""){
+                return temp;
+            }
             else{
                 return NULL;
-             }
-             for(int i=0;i<3;i++){
-                string addr=reg.findRegisterAddress(reg_store[i]);
-                temp=temp+addr;
-            }
-           temp=temp+shamt;
-           functionCode=obj.r_fncode(store);
-           temp=temp+functionCode;
-        }
-        else if(store.compare("sll")==0 || store.compare("srl")==0){
-            temp=temp+"00000";
-            string reg_store[2];
-            reg_store[0]=current_instruction.substr(0,2);
-            reg_store[1]=current_instruction.substr(2,2);
-            for(int i=0;i<2;i++){
-                string addr=reg.findRegisterAddress(reg_store[i]);
-                temp=temp+addr;
-             }
-             shamt=gen.dectobin(stoi(current_instruction.substr(4)),5);
-             temp=temp+shamt;
-           functionCode=obj.r_fncode(store);
-           temp=temp+functionCode;
-        }
-      }
-      return temp;
-   }
-    //Parsing itype instructions
-    string itype_instruction(string current_instruction){
-        readInstruction(current_instruction);
-        string store=obj.search(current_instruction);
-         string temp="";
-         string opcode,immediate,reg_store[2];
-         if(store=="lw"||store=="sw"){
-             opcode=obj.i_opcode(store);
-             temp=temp+opcode;
-             current_instruction=current_instruction.substr(2);
-             reg_store[1]=current_instruction.substr(0,2);
-             int search=current_instruction.find("(");
-             int temp_imm=stoi(current_instruction.substr(2,search-2));
-             immediate=gen.dectobin(temp_imm,16);
-             reg_store[0]=current_instruction.substr(search+1,2);
-             for(int i=0;i<2;i++){
-                string addr=reg.findRegisterAddress(reg_store[i]);
-                temp=temp+addr;
-             }
-             temp=temp+immediate;
-         }
-         else if(store=="beq"||store=="bne"){
-             opcode=obj.i_opcode(store);
-             temp=temp+opcode;
-             current_instruction=current_instruction.substr(3);
-             if(current_instruction.substr(0,2)!="ze"){
-             reg_store[0]=current_instruction.substr(0,2);
-             if(current_instruction.substr(2,2)!="ze")
-             reg_store[1]=current_instruction.substr(2,2);
-             else
-             reg_store[1]=current_instruction.substr(2,4);
-             }
-             else{
-             reg_store[0]=current_instruction.substr(0,4);
-             if(current_instruction.substr(4,2)!="ze")
-             reg_store[1]=current_instruction.substr(4,2);
-             }
-            for(int i=0;i<2;i++){
-                string addr=reg.findRegisterAddress(reg_store[i]);
-                temp=temp+addr;
-             }
-             int foundlabel=0;
-             for(int i=0;i<labeltable.size();i++){
-            if(current_instruction.find(labeltable[i].labelname)!=-1){
-                int val=stoi(labeltable[i].address);
-                string temp_val=gen.dectobin(val,16);
-                temp=temp+temp_val;
-                foundlabel=1;
-                break;
             }
         }
-        if(foundlabel==0){
-            cout<<"Invalid label name"<<endl;
-            exit(1);
-        }
-        else{
-            return temp;
-        }
-    }
-         else if(store=="addi"){
-            opcode=obj.i_opcode(store);
-            temp=temp+opcode;
-            current_instruction=current_instruction.substr(4);
-            reg_store[0]=current_instruction.substr(0,2);
-            current_instruction=current_instruction.substr(0,2);
-            if(current_instruction.find("zero")!=-1){
-            reg_store[1]=current_instruction.substr(0,2);
-            current_instruction=current_instruction.substr(0,2);
-
-            }
-            else{
-                 reg_store[1]=current_instruction.substr(0,4);
-                 current_instruction=current_instruction.substr(0,4);
-            }
-            int temp_imm=stoi(current_instruction);
-            immediate=gen.dectobin(temp_imm,16);
-             for(int i=0;i<2;i++){
-                string addr=reg.findRegisterAddress(reg_store[i]);
-                temp=temp+addr;
-             }
-             temp=temp+immediate;
-         }
-
-    }
-    //Parsing jtype instructions
-    string jtype_instruction(string current_instruction){
-        readInstruction(current_instruction);
-        string opcode=obj.j_opcode("j");
-        string temp="";
-        temp=temp+opcode;
-        current_instruction=current_instruction.substr(1);
-        for(int i=0;i<labeltable.size();i++){
-            if(labeltable[i].labelname==current_instruction){
-                int val=stoi(labeltable[i].address);
-                string temp_val=gen.dectobin(val,26);
-                temp=temp+temp_val;
-                //temp=temp+labeltable[i].address;
-                break;
-            }
-        }
-        return temp;
-
-    }
-
-    simulator sim; //object of class simulator
-	void execute(){
-	//in execute method we run the following after getting machine instruction
-	// sim.machinecodeProcessor(instruction);	//here instruction is the machine code instruction after parsing
-	}
-};
 
 
-class simulator{  
-    public:
-        computingUnit computingU;        //creating objects for all classes
-        registers reg;
-        memory memo;
+        void processInstruction(string current_instruction){
+            if(current_instruction.substr(0,3)=="add"){
+                int reg_store[3]={-1};
+                for(int i=0;i<33;i++){
+                    if(current_instruction.substr(3,2)==REG[i])
+                        reg_store[0]=i;
+                    if(current_instruction.substr(5,2)==REG[i])
+                        reg_store[1]=i;
+                    if(current_instruction.substr(7,2)==REG[i])
+                        reg_store[2]=i;
 
-        generalFunctions gen;
-        int checker = 0;
+                }
         
-        void checkInstruction(string opcode, string funct){
-            if (opcode == "000000"){
-                if (funct == "100000" || funct == "100010" || funct == "101010"){       //add or sub
-                    checker = 1;
+                    register_values[reg_store[0]]= register_values[reg_store[1]]+ register_values[reg_store[2]];
+                    programCounter++;
+
+
+            }
+            else if(current_instruction.substr(0,3)=="sub"){
+                int reg_store[3]={-1};
+                for(int i=0;i<33;i++){
+                    if(current_instruction.substr(3,2)==REG[i])
+                        reg_store[0]=i;
+                    if(current_instruction.substr(5,2)==REG[i])
+                        reg_store[1]=i;
+                    if(current_instruction.substr(7,2)==REG[i])
+                        reg_store[2]=i;
+
                 }
+               
+                     register_values[reg_store[0]]= register_values[reg_store[1]]-register_values[reg_store[2]];
+                      programCounter++;
             }
-            else if (opcode == "000100"){       //beq
-               checker = 2;
-            }
-            else if (opcode == "000010"){   //jump
-                checker = 3;
-            }
-            else if (opcode == "101011"){   //sw
-                checker = 4;
-            }
-            else if (opcode == "100011"){   //lw
-                checker = 5;
-            }
-            else if (opcode == "100011"){   //bne
-                checker = 6;
-            }
-            //else if other operations
-            else {
-                gen.terminate;
-            }
-        }
-
-
-        void machinecodeProcessor(string instruction){  //takes machine instruction in 0s and 1s as a parameter and excutes
-            string opcode, functionCode, src1, src2;
-		
-            opcode = instruction.substr(0,6);
-            functionCode = instruction.substr(26,6);
-            checkInstruction(opcode,functionCode);
-            if(checker==1){ //this if block is for add, sub and all such similar instructions (may include more if required)
-                src1 = reg.getdata(instruction.substr(6,5));
-                src2 = reg.getdata(instruction.substr(11,5));
-                string destAddrs = instruction.substr(16,5); //stores the adress of the destination register in binary form
-                computingU.compute(src1,src2,functionCode);
-                reg.setdata(destAddrs,computingU.finalResult);  //this function not yet defined (has to be defined in class registers)
-            }
-            //elseif other operations like bne, j etc
-            else if(checker==2){  //beq
-                src1 = reg.getdata(instruction.substr(6,5));
-                src2 = reg.getdata(instruction.substr(11,5));
-                if(gen.BinaryToDecimal(src1) - gen.BinaryToDecimal(src2)==0){
-                    //increment pc to the value which the label indicates
-                    int offset = gen.BinaryToDecimal(instruction.substr(16,16));
-                    pc = pc + offset/4;	//gotta make adjustments // will do after getting the machine code
-                }  
+            else if(current_instruction.substr(0,4)=="addi"){
+                string rs,rd,imm;
+                int immediate;
+                rd=current_instruction.substr(4,2);
+                if(current_instruction.substr(6,2)!="ze"){
+                    rd=current_instruction.substr(6,2);
+                    imm=current_instruction.substr(8);
+                    immediate=stoi(imm);
+                }
                 else{
-                    pc++;
+                     rd=current_instruction.substr(6,4);
+                     imm=current_instruction.substr(10);
+                    immediate=stoi(imm);
                 }
+                int reg_store[2]={-1};
+                for(int i=0;i<33;i++){
+                    if(REG[i].find(rd)!=-1){
+                        reg_store[0]=i;
+                    }
+                    if(REG[i].find(rs)!=-1){
+                        reg_store[1]=i;
+                    }
+                }
+                register_values[reg_store[0]]=immediate+register_values[reg_store[1]];
+                 programCounter++;
             }
-
-            else if(checker==6){  //bne
-                src1 = reg.getdata(instruction.substr(6,5));
-                src2 = reg.getdata(instruction.substr(11,5));
-                if(gen.BinaryToDecimal(src1) - gen.BinaryToDecimal(src2)!=0){
-                    //increment pc to the value which the label indicates
-                    int offset = gen.BinaryToDecimal(instruction.substr(16,16));
-                    pc = pc + offset/4;
-                }  
+            else if(current_instruction.substr(0,3)=="beq"){
+                int reg_store[2]={-1};
+                for(int i=0;i<33;i++){
+                    if(current_instruction.substr(3,2)==REG[i])
+                        reg_store[0]=i;
+                    if(current_instruction.substr(5,2)==REG[i])
+                        reg_store[1]=i;
+                }
+                string st = current_instruction.substr(7);
+                string addr;
+                for(int i=0;i<labeltable.size();i++){
+                    if(labeltable[i].labelname==st){
+                        addr=labeltable[i].address;
+                    }
+                }
+                if(register_values[reg_store[0]]==register_values[reg_store[1]]){
+                    programCounter=stoi(addr);
+                }
                 else{
-                    pc++;
+                    programCounter++;
+                }
+
+            }
+            else if(current_instruction.substr(0,3)=="bne"){
+                int reg_store[2]={-1};
+                for(int i=0;i<33;i++){
+                    if(current_instruction.substr(3,2)==REG[i])
+                        reg_store[0]=i;
+                    else if(current_instruction.substr(5,2)==REG[i])
+                        reg_store[1]=i;
+                }
+                string st = current_instruction.substr(7);
+                string addr;
+                for(int i=0;i<labeltable.size();i++){
+                    if(labeltable[i].labelname==st){
+                        addr=labeltable[i].address;
+                    }
+                }
+                if(register_values[reg_store[0]]!=register_values[reg_store[1]]){
+                    programCounter=stoi(addr);
+                }
+                else{
+                    programCounter++;
+                }
+
+            }
+            else if(current_instruction.substr(0,1)=="j"){
+              
+                string st = current_instruction.substr(1);
+                string addr;
+                for(int i=0;i<labeltable.size();i++){
+                    if(labeltable[i].labelname==st){
+                        addr=labeltable[i].address;
+                    }
+                }
+               programCounter=stoi(addr);
+
+            }
+           else if(current_instruction.substr(0,2)=="lw"){
+                  string rd,rs,offset;
+                  rd=current_instruction.substr(2,2);
+                  int index=current_instruction.find("(");
+                  rs=current_instruction.substr(index+1,2);
+                  offset=current_instruction.substr(4,index-4);
+                int offs = stoi(offset)/4;
+                int value;
+                int reg_store[2]={-1};
+                for(int i=0;i<33;i++){
+                    if(rs==REG[i])
+                        reg_store[0]=i;
+                    else if(rd==REG[i])
+                        reg_store[1]=i;
+                }
+                value = register_values[reg_store[0]];
+                register_values[reg_store[1]] = MEM[(offs + value)/4];
+                programCounter++;
+             }
+            else if(current_instruction.substr(0,2)=="sw"){
+                  string rd,rs,offset;
+                  rs=current_instruction.substr(2,2);
+                  int index=current_instruction.find("(");
+                  rd=current_instruction.substr(index+1,2);
+                  offset=current_instruction.substr(4,index-4);
+                int offs = stoi(offset)/4;
+                int value;
+
+                int reg_store[2]={-1};
+                for(int i=0;i<33;i++){
+                    if(rs==REG[i])
+                        reg_store[0]=i;
+                    else if(rd==REG[i])
+                        reg_store[1]=i;
+                }                                     
+                value = register_values[reg_store[1]];
+                MEM[(offs + value)/4]=register_values[reg_store[0]];
+                programCounter++;
+            }
+            else if(current_instruction.substr(0,3)=="slt"){
+                string rd,src1,src2;
+                rd=current_instruction.substr(3,2);
+                src1=current_instruction.substr(5,2);
+                src2=current_instruction.substr(7,2);
+                int reg_store[3]={-1};
+                for(int i=0;i<32;i++){
+                    if(src1==REG[i])
+                    reg_store[0]=i;
+                    else if(src2==REG[i])
+                    reg_store[1]=i;
+                    else if(rd==REG[i])
+                    reg_store[2]=i;
+                }
+                if(register_values[reg_store[0]]<register_values[reg_store[1]]){
+                    register_values[reg_store[2]]=1;
+                }
+                else{
+                     register_values[reg_store[2]]=1;
+                }
+                programCounter++;
+            }
+            else if(current_instruction.substr(0,2)=="la"){ //las0array
+                for(int i=0;i<33;i++){
+                    if(current_instruction.substr(2,2)==REG[i]){
+                        register_values[i]=0; //MEM[0]=0;
+                        break;
+                    }
+                }
+                programCounter++;
+            }
+        }
+        void display(){
+            if(programCounter<NumberOfInstructions) //display current instruction
+	        {
+		       cout<<endl<<"Executing instruction: "<<InputProgram[programCounter]<<endl;
+	        }
+	      else
+	       {
+		     cout<<endl<<"Executing instruction: "<<InputProgram[programCounter-1]<<endl;
+	       }
+
+           cout<<"Registers:"<<endl<<endl
+           printf("%10s%10s\n","Register","Value");
+           
+        }
+
+        void execute(int mode){
+        
+            preprocess();
+            int mainindex;
+            for(int i=1;i<=NumberOfInstructions;i++){
+                if(InputProgram[i]=="main:"){
+                mainindex=i;
+                break;
                 }
             }
-
-            else if(checker==3){  //j
-                int offset = gen.BinaryToDecimal(instruction.substr(6,26));
-                //pc??
+            programCounter=mainindex+1;
+            while(programCounter<=NumberOfInstructions){
+                string current_instruction = readInstruction(InputProgram[programCounter]);
+                processInstruction(current_instruction);
+                
             }
 
-            else if(checker==5){  //lw
-                int int_address = gen.BinaryToDecimal(reg.getdata(instruction.substr(6,5))) + gen.BinaryToDecimal(strcode.substr(16,16));
-                memo.getdata(gen.DecimalToBinary(int_address));
-                reg.setdata(instruction.substr(11,5),gen.BinaryToDecimal(memo.getvalue));
-            }
 
-            else if(checker==4){  //sw
-                string val = reg.getdata(instruction.substr(11,5));
-                int int_address = gen.BinaryToDecimal(reg.getdata(instruction.substr(6,5))) + gen.BinaryToDecimal(strcode.substr(16,16));
-                memo.setdata(gen.DecimalToBinary(int_address), gen.BinaryToDecimal(val));
-            }
-            //finally we print all registers here
-            //printRegisters(reg);
-
-            //pc incrementation
-            if(checker!=2 && checker!=3 && checker!=6){ //not equal to bne, beq, j
-                pc++;
-            }
-        }
-
-        void printRegisters(registers rgstr){
-            // prints in terminal
-            cout << "R1: " << rgstr.REG[1] << endl;
-            cout << "R2: " << rgstr.REG[2] << endl;
-            cout << "R3: " << rgstr.REG[3] << endl;
-            cout << "R4: " << rgstr.REG[4] << endl;
-            cout << "R5: " << rgstr.REG[5] << endl;
-            cout << "R6: " << rgstr.REG[6] << endl;
-            cout << "R7: " << rgstr.REG[7] << endl;
-            cout << "R8: " << rgstr.REG[8] << endl;
-            cout << "R9: " << rgstr.REG[9] << endl;
-            cout << "R10: " << rgstr.REG[10] << endl;
-            cout << "R11: " << rgstr.REG[11] << endl;
-            cout << "R12: " << rgstr.REG[12] << endl;
-            cout << "R13: " << rgstr.REG[13] << endl;
-            cout << "R14: " << rgstr.REG[14] << endl;
-            cout << "R15: " << rgstr.REG[15] << endl;
-            cout << "R16: " << rgstr.REG[16] << endl;
-            cout << "R17: " << rgstr.REG[17] << endl;
-            cout << "R18: " << rgstr.REG[18] << endl;
-            cout << "R19: " << rgstr.REG[19] << endl;
-            cout << "R20: " << rgstr.REG[20] << endl;
-            cout << "R21: " << rgstr.REG[21] << endl;
-            //other registers
-        }
+    }
 };
-
-/*
-00100000000100010000000000000001
-00100000000100100000000000001010
-*/
-int main(){ 
-    mipsSimulator simulate;
-    simulate.execute();
-}
-//end of program
