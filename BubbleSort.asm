@@ -1,5 +1,5 @@
 .data
-    .word 9 # 0x10010000 - 0001 0000 0000 0001 0000 0000 0000 0000 
+    .word 9 # 0x10010000 - 0001 0000 0000 0001 0000 0000 0000 0000 //
     .word 3
     .word 1
     .word 5
@@ -8,7 +8,7 @@
 .globl main
 main:
     addi $t6, $zero, 1
-    lui $s0, 0x1001
+    lui $s0, 2
     j while
 
 while:
@@ -48,3 +48,4 @@ next:
 
 exit:
     jr $ra
+
