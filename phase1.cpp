@@ -195,6 +195,10 @@ class registers{
         instructionSet inst;
         // setvalue of a register funct
         //void setdata(destAddrs,data_to_be_stored);
+	void setdata(string destAddrs,int data_to_be_stored){
+            REG[gen.BinaryToDecimal(destAddrs)] = gen.DecimalToBinary(data_to_be_stored);
+        }
+	
         // getvalue of a register funct
         string getdata(string value){
             string result;
@@ -226,11 +230,19 @@ class computingUnit{ //we compute only for rtypes - add, sub, etc
         generalFunctions gen;
         int finalResult;
         void compute(string source1, string source2, string funct){ //funct is function code that identifies the specific R type instruction
-            if (funct == "100000"){
+            if (funct == "100000"){	//add
                 finalResult = gen.BinaryToDecimal(source1) + gen.BinaryToDecimal(source2);
             }
-            else if(funct == "100010"){
+            else if(funct == "100010"){		//sub
                 finalResult = gen.BinaryToDecimal(source1) - gen.BinaryToDecimal(source2);
+            }
+	    else if(funct == "101010"){		//slt
+                if(gen.BinaryToDecimal(source1)<gen.BinaryToDecimal(source2)){
+                    finalResult = 1;
+                }
+                else{
+                    finalResult = 0;
+                }
             }
             //elseif any other r type instructions which need to be computed
         }
@@ -668,38 +680,108 @@ public:
 };
 
 
-class control{  // we might use flag kinda things to know what instruction has appeared. for example, if 000000 is the opcode we will update flag1 (suppose) to 1, and we will use it in simulator class
+class simulator{  
     public:
+        computingUnit computingU;        //creating objects for all classes
+        registers reg;
+        memory memo;
+
         generalFunctions gen;
         int checker = 0;
+        
         void checkInstruction(string opcode, string funct){
             if (opcode == "000000"){
-                if (funct == "100000" || funct == "100010"){
-                    //we know now that instruction is add or subtract
-                    //update value of add_sub to 1 maybe?
+                if (funct == "100000" || funct == "100010" || funct == "101010"){       //add or sub
                     checker = 1;
                 }
             }
-            else if (opcode == "000100"){
-               //beq
-               //here we could do checker = 2
+            else if (opcode == "000100"){       //beq
                checker = 2;
             }
-            else if (opcode == "000010"){
-                //j
-                // here checker = 3 and so on...
-            }
-            else if (opcode == "101011"){
-                //sw
-            }
-            else if (opcode == "100011"){
-                //lw
+            else if (opcode == "000010"){   //jump
                 checker = 3;
             }
+            else if (opcode == "101011"){   //sw
+                checker = 4;
+            }
+            else if (opcode == "100011"){   //lw
+                checker = 5;
+            }
+            else if (opcode == "100011"){   //bne
+                checker = 6;
+            }
+            //else if other operations
             else {
                 gen.terminate;
             }
         }
+
+
+        void machinecodeProcessor(string instruction){  //takes machine instruction in 0s and 1s as a parameter and excutes
+            string opcode, functionCode, src1, src2;
+		
+            opcode = instruction.substr(0,6);
+            functionCode = instruction.substr(26,6);
+            checkInstruction(opcode,functionCode);
+            if(checker==1){ //this if block is for add, sub and all such similar instructions (may include more if required)
+                src1 = reg.getdata(instruction.substr(6,5));
+                src2 = reg.getdata(instruction.substr(11,5));
+                string destAddrs = instruction.substr(16,5); //stores the adress of the destination register in binary form
+                computingU.compute(src1,src2,functionCode);
+                reg.setdata(destAddrs,computingU.finalResult);  //this function not yet defined (has to be defined in class registers)
+            }
+            //elseif other operations like bne, j etc
+            else if(checker==2){  //beq
+                src1 = reg.getdata(instruction.substr(6,5));
+                src2 = reg.getdata(instruction.substr(11,5));
+                if(gen.BinaryToDecimal(src1) - gen.BinaryToDecimal(src2)==0){
+                    //increment pc to the value which the label indicates
+                    int offset = gen.BinaryToDecimal(instruction.substr(16,16));
+                    pc = pc + offset/4;	//gotta make adjustments // will do after getting the machine code
+                }  
+                else{
+                    pc++;
+                }
+            }
+
+            else if(checker==6){  //bne
+                src1 = reg.getdata(instruction.substr(6,5));
+                src2 = reg.getdata(instruction.substr(11,5));
+                if(gen.BinaryToDecimal(src1) - gen.BinaryToDecimal(src2)!=0){
+                    //increment pc to the value which the label indicates
+                    int offset = gen.BinaryToDecimal(instruction.substr(16,16));
+                    pc = pc + offset/4;
+                }  
+                else{
+                    pc++;
+                }
+            }
+
+            else if(checker==3){  //j
+                int offset = gen.BinaryToDecimal(instruction.substr(6,26));
+                //pc??
+            }
+
+            else if(checker==5){  //lw
+                int int_address = gen.BinaryToDecimal(reg.getdata(instruction.substr(6,5))) + gen.BinaryToDecimal(strcode.substr(16,16));
+                memo.getdata(gen.DecimalToBinary(int_address));
+                reg.setdata(instruction.substr(11,5),gen.BinaryToDecimal(memo.getvalue));
+            }
+
+            else if(checker==4){  //sw
+                string val = reg.getdata(instruction.substr(11,5));
+                int int_address = gen.BinaryToDecimal(reg.getdata(instruction.substr(6,5))) + gen.BinaryToDecimal(strcode.substr(16,16));
+                memo.setdata(gen.DecimalToBinary(int_address), gen.BinaryToDecimal(val));
+            }
+            //finally we print all registers here
+            //printRegisters(reg);
+
+            //pc incrementation
+            if(checker!=2 && checker!=3 && checker!=6){ //not equal to bne, beq, j
+                pc++;
+            }
+        }
+
         void printRegisters(registers rgstr){
             // prints in terminal
             cout << "R1: " << rgstr.REG[1] << endl;
@@ -726,84 +808,13 @@ class control{  // we might use flag kinda things to know what instruction has a
             //other registers
         }
 };
-class simulator{
-    public:
-        void machinecodeProcessor(string instruction){
-            string opcode, functionCode, src1, src2;
-            computingUnit computingU;
-            control contr;                          //creating objects for all classes
-            generalFunctions gen;
-            registers reg;
-            memory memo;
-		
-            opcode = instruction.substr(0,6);
-                functionCode = instruction.substr(26,6);
-                contr.checkInstruction(opcode,functionCode);
-                if(contr.checker==1){ //this if block is for add, sub and all such similar instructions (may include more if required)
-                    src1 = reg.getdata(instruction.substr(6,5));
-                    src2 = reg.getdata(instruction.substr(11,5));
-                    string destAddrs = instruction.substr(16,5); //stores the adress of the destination register in binary form
-                    computingU.compute(src1,src2,functionCode);
-                    reg.setdata(destAddrs,computingU.finalResult);  //this function not yet defined (has to be defined in class registers)
-                }
-                //elseif other operations like bne, j etc
-                else if(contr.checker==2){  //beq
-                    src1 = reg.getdata(instruction.substr(6,5));
-                    src2 = reg.getdata(instruction.substr(11,5));
-                    if(gen.BinaryToDecimal(src1) - gen.BinaryToDecimal(src2)==0){
-                        //increment pc to the value which the label indicates
-                        int offset = gen.BinaryToDecimal(instruction.substr(16,16));
-                        pc = pc + offset/4;	//gotta make adjustments // will do after getting the machine code
-                    }  
-                    else{
-                        pc++;
-                    }
-                }
 
-                else if(contr.checker==6){  //bne
-                    src1 = reg.getdata(instruction.substr(6,5));
-                    src2 = reg.getdata(instruction.substr(11,5));
-                    if(gen.BinaryToDecimal(src1) - gen.BinaryToDecimal(src2)!=0){
-                        //increment pc to the value which the label indicates
-                        int offset = gen.BinaryToDecimal(instruction.substr(16,16));
-                        pc = pc + offset/4;
-                    }  
-                    else{
-                        pc++;
-                    }
-                }
-
-                else if(contr.checker==3){  //j
-                    int offset = gen.BinaryToDecimal(instruction.substr(6,26));
-                    //pc??
-                }
-
-                else if(contr.checker==5){  //lw
-                    int int_address = gen.BinaryToDecimal(reg.getdata(instruction.substr(6,5))) + gen.BinaryToDecimal(strcode.substr(16,16));
-                    memo.getdata(gen.DecimalToBinary(int_address));
-                    reg.setdata(instruction.substr(11,5),gen.BinaryToDecimal(memo.getvalue));
-                }
-
-                else if(contr.checker==4){  //sw
-                    string val = reg.getdata(instruction.substr(11,5));
-                    int int_address = gen.BinaryToDecimal(reg.getdata(instruction.substr(6,5))) + gen.BinaryToDecimal(strcode.substr(16,16));
-                    memo.setdata(gen.DecimalToBinary(int_address), gen.BinaryToDecimal(val));
-                }
-                //finally we print all registers here
-                contr.printRegisters(reg);
-
-                //pc incrementation
-                if(contr.checker!=2 && contr.checker!=3 && contr.checker!=6){ //not equal to bne, beq, j
-                    pc++;
-                }
-            }
-};
 /*
 00100000000100010000000000000001
 00100000000100100000000000001010
 */
 int main(){ 
-    simulator simulate;
+    mipsSimulator simulate;
     simulate.execute();
 }
 //end of program
