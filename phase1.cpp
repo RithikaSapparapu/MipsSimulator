@@ -659,6 +659,12 @@ public:
         return temp;
 
     }
+
+    simulator sim; //object of class simulator
+	void execute(){
+	//in execute method we run the following after getting machine instruction
+	// sim.machinecodeProcessor(instruction);	//here instruction is the machine code instruction after parsing
+	}
 };
 
 
@@ -722,36 +728,75 @@ class control{  // we might use flag kinda things to know what instruction has a
 };
 class simulator{
     public:
-        void execute(){
-            string  instruction = "00000010001100101000000000100000"; //one add instruction is hardcoded as an example just to understand how the everything works
+        void machinecodeProcessor(string instruction){
             string opcode, functionCode, src1, src2;
             computingUnit computingU;
             control contr;                          //creating objects for all classes
             generalFunctions gen;
             registers reg;
             memory memo;
+		
             opcode = instruction.substr(0,6);
-            functionCode = instruction.substr(26,6);
-            contr.checkInstruction(opcode,functionCode);
-            if(contr.checker==1){ //this if block is for add, sub and all such similar instructions (may include more if required)
-                src1 = reg.getdata(instruction.substr(6,5));
-                src2 = reg.getdata(instruction.substr(11,5));
-                string destAddrs = instruction.substr(16,5); //stores the adress of the destination register in binary form
-                computingU.compute(src1,src2,functionCode);
-                reg.setdata(destAddrs,computingU.finalResult);  //this function not yet defined (has to be defined in class registers)
-            }
-            //elseif other operations like bne, j etc
-            else if(contr.checker==2){
-                src1 = reg.getdata(instruction.substr(6,5));
-                src2 = reg.getdata(instruction.substr(11,5));
-                if(gen.BinaryToDecimal(src1) - gen.BinaryToDecimal(src2)==0){
-                    //increment pc to the value which the label indicates
+                functionCode = instruction.substr(26,6);
+                contr.checkInstruction(opcode,functionCode);
+                if(contr.checker==1){ //this if block is for add, sub and all such similar instructions (may include more if required)
+                    src1 = reg.getdata(instruction.substr(6,5));
+                    src2 = reg.getdata(instruction.substr(11,5));
+                    string destAddrs = instruction.substr(16,5); //stores the adress of the destination register in binary form
+                    computingU.compute(src1,src2,functionCode);
+                    reg.setdata(destAddrs,computingU.finalResult);  //this function not yet defined (has to be defined in class registers)
                 }
-                
+                //elseif other operations like bne, j etc
+                else if(contr.checker==2){  //beq
+                    src1 = reg.getdata(instruction.substr(6,5));
+                    src2 = reg.getdata(instruction.substr(11,5));
+                    if(gen.BinaryToDecimal(src1) - gen.BinaryToDecimal(src2)==0){
+                        //increment pc to the value which the label indicates
+                        int offset = gen.BinaryToDecimal(instruction.substr(16,16));
+                        pc = pc + offset/4;	//gotta make adjustments // will do after getting the machine code
+                    }  
+                    else{
+                        pc++;
+                    }
+                }
+
+                else if(contr.checker==6){  //bne
+                    src1 = reg.getdata(instruction.substr(6,5));
+                    src2 = reg.getdata(instruction.substr(11,5));
+                    if(gen.BinaryToDecimal(src1) - gen.BinaryToDecimal(src2)!=0){
+                        //increment pc to the value which the label indicates
+                        int offset = gen.BinaryToDecimal(instruction.substr(16,16));
+                        pc = pc + offset/4;
+                    }  
+                    else{
+                        pc++;
+                    }
+                }
+
+                else if(contr.checker==3){  //j
+                    int offset = gen.BinaryToDecimal(instruction.substr(6,26));
+                    //pc??
+                }
+
+                else if(contr.checker==5){  //lw
+                    int int_address = gen.BinaryToDecimal(reg.getdata(instruction.substr(6,5))) + gen.BinaryToDecimal(strcode.substr(16,16));
+                    memo.getdata(gen.DecimalToBinary(int_address));
+                    reg.setdata(instruction.substr(11,5),gen.BinaryToDecimal(memo.getvalue));
+                }
+
+                else if(contr.checker==4){  //sw
+                    string val = reg.getdata(instruction.substr(11,5));
+                    int int_address = gen.BinaryToDecimal(reg.getdata(instruction.substr(6,5))) + gen.BinaryToDecimal(strcode.substr(16,16));
+                    memo.setdata(gen.DecimalToBinary(int_address), gen.BinaryToDecimal(val));
+                }
+                //finally we print all registers here
+                contr.printRegisters(reg);
+
+                //pc incrementation
+                if(contr.checker!=2 && contr.checker!=3 && contr.checker!=6){ //not equal to bne, beq, j
+                    pc++;
+                }
             }
-            //finally we print all registers here
-            contr.printRegisters(reg);
-        }
 };
 /*
 00100000000100010000000000000001
