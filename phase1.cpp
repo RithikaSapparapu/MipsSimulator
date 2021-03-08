@@ -36,7 +36,7 @@ class generalFunctions{
 class mipsSimulator{
 public:
     generalFunctions gen;
-    int MEM[1024];
+    int MEM[1024]={-1};
        int programCounter;
        int NumberOfInstructions;
        int MaxLength;//10000
@@ -151,15 +151,16 @@ public:
                     exit(1);
                 }
             }
-            int wordindex;
+            int wordindex,arrayindex;
             if(current_section==0){
                 for(i=dataStart+1;i<NumberOfInstructions;i++){
                     string current_instruction="";
                     current_instruction=InputProgram[i];
                     current_instruction = readInstruction(current_instruction);
+                    arrayindex=current_instruction.find(":");//array:.word9315
                     wordindex=current_instruction.find(".word");
                     int storeline;
-                    if(wordindex==-1){
+                    if(wordindex==-1 && arrayindex=-1){
                         if(current_instruction.find(".text")==-1) //if text section has not started
                         {
                             cout<<"Error: Unexpected symbol in data section"<<endl;
@@ -170,22 +171,25 @@ public:
                         }
                     }
                 else{
-                    string num=current_instruction.substr(wordindex+5);
-                    Memoryword tempmemory;
-                    tempmemory.value=num;
-                    tempmemory.address=to_string(i+1);;
-                    Mem.push_back(tempmemory);
+                    string num=current_instruction.substr(arrayindex+6);//array:.word9135
+                    //lets assume array values are <10
+                    int k=0;
+                    for(int i=arrayindex+6;i<num.length();i++){
+                        MEM[k]=stoi(num.substr(k,1));
+                        k++;
+                    }
+                    
                 } 
                 }
             }
-            for(i=0;Mem.size()>0 && i<Mem.size()-1;i++) //check for duplicates
+            /*for(i=0;Mem.size()>0 && i<Mem.size()-1;i++) //check for duplicates
             {
                 if(Mem[i].value==Mem[i+1].value)
                 {
                     cout<<"Error: One or more labels are repeated"<<endl;
                     exit(1);
                 }
-            }
+            }*/
             int textIndex=0;
             int textFlag=0;
 
@@ -476,22 +480,29 @@ public:
             }
         }
         void display(){
-            if(programCounter<NumberOfInstructions) //display current instruction
+           /* if(programCounter<NumberOfInstructions) //display current instruction
 	        {
-		       cout<<endl<<"Executing instruction: "<<InputProgram[programCounter]<<endl;
+		       cout<<endl<<"Executing instruction: "<<InputProgrampProgramCounter]<<endl;
 	        }
 	      else
 	       {
 		     cout<<endl<<"Executing instruction: "<<InputProgram[programCounter-1]<<endl;
-	       }
+	       }*/
 
            cout<<"Registers:"<<endl<<endl
            printf("%10s%10s\n","Register","Value");
-           
+           for(int i=0;i<32;i++){
+               printf("%10s%10s\n",REG[i],register_values[i]);
+           }
+           cout<<"Memory :"<<endl;
+           for(int i=0;i<1024;i++){
+               if(MEM[i]!=-1){
+                   cout<<MEM[i]<<endl;
+               }
+           }
         }
 
         void execute(int mode){
-        
             preprocess();
             int mainindex;
             for(int i=1;i<=NumberOfInstructions;i++){
@@ -504,9 +515,15 @@ public:
             while(programCounter<=NumberOfInstructions){
                 string current_instruction = readInstruction(InputProgram[programCounter]);
                 processInstruction(current_instruction);
-                
             }
-
-
+            display();
     }
 };
+int main(){
+    cout<<"Welcome to team dynamic MIPS Simulator!!"<<endl;
+    string path;
+    cin>>path;
+    mipsSimulator simulator(path);
+    simulator.execute();
+}
+
