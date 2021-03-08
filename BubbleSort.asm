@@ -3,47 +3,41 @@
     .word 3
     .word 1
     .word 5
+    
     # array: .word 9,3,1,5
 .text
 .globl main
 main:
     addi $t6, $zero, 1
-    lui $s0, 0x1001
-    j while
+    addi $t5, $zero, 1
+    j bigwhile
 
 while:
-    add $t5, $zero, $zero
     lw $t0, 0($s0)
     lw $t1, 4($s0)
     slt $t4, $t0, $t1
-    bne $t4, $zero, nextcomp 
+    bne $t4, $zero, increment 
     sw $t1, 0($s0)
     sw $t0, 4($s0)
     add $t5, $t5, $t6
-    j nextcomp
+    addi $s0, $s0, 4
 
-nextcomp:
-    lw $t0, 4($s0)
-    lw $t1, 8($s0)
-    slt $t4, $t0, $t1
-    bne $t4, $zero, nextcomp1 
-    sw $t1, 4($s0)
-    sw $t0, 8($s0)
-    add $t5, $t5, $t6
-    j nextcomp1
+    lw $t3, 4($s0)
+    beq $t3, $zero, bigwhile
 
-nextcomp1:
-    lw $t0, 8($s0)
-    lw $t1, 12($s0)
-    slt $t4, $t0, $t1
-    bne $t4, $zero, next 
-    sw $t1, 8($s0)
-    sw $t0, 12($s0)
-    add $t5, $t5, $t6
-    j next
+    j while
 
-next:
+increment: 
+    addi $s0, $s0, 4
+    lw $t3, 4($s0)
+    beq $t3, $zero, bigwhile
+    j while
+
+bigwhile:
+    lui $s0, 0x1001
+
     beq $t5, $zero, exit
+    addi $t5, $zero, 0
     j while
 
 exit:
