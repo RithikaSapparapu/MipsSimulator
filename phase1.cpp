@@ -461,10 +461,6 @@ public:
            }
         }
 
-
-        //this display isnt working properly, please make changes
-
-
         void execute(int mode){
             preprocess();
             int mainindex;
@@ -518,8 +514,8 @@ public:
 int main(){
     cout<<"Welcome to Team dynamic MIPS SIMULATOR!!"<<endl;
     int mode;
-    cout<<"Enter mode(1/2):      1.Step-bystep execution   2.Final output"<<endl;
+    cout<<"Enter mode 1 or 2:      1.Step-bystep execution   2.Final output"<<endl;
     cin>>mode;
-    mipsSimulator simulator("BubbleSortlite.asm");
+    mipsSimulator simulator("BubbleSort.asm");
     simulator.execute(mode);
 }
