@@ -51,44 +51,21 @@ public:
         InputFile.close();
 
     }
-
-
-    void removeSpacesandCommas(string str){
-        int count = 0;
-        for (int i = 0; str[i]; i++){
-            if (str[i] != ' ')
-                str[count++] = str[i];
-        str[count] = '\0';
-        }
-        int count1= 0;
-        for (int j = 0; str[j]; j++){
-            if (str[j] != ',')
-                str[count1++] = str[j];
-        str[count1] = '\0';
-        }
-    }
-    void removeDollar(string str){
-            int count = 0;
-        for (int i = 0; str[i]; i++){
-            if (str[i] != '$')
-                str[count++] = str[i];
-        str[count] = '\0';
-        }
-    }
-        string readInstruction(string current_instruction){
-                if(current_instruction.find("#")!=-1) //remove comments
+       string readInstruction(string str){
+            if(str.find("#")!=-1) //remove comments
                     {
-                    current_instruction=current_instruction.substr(0,current_instruction.find("#"));
+                    str=str.substr(0,str.find("#"));
                     }
-            removeSpacesandCommas(current_instruction);
-            removeDollar(current_instruction);
-
-            return current_instruction;
+            str.erase(remove(str.begin(), str.end(), ' '), str.end());
+            str.erase(remove(str.begin(), str.end(), ','), str.end());
+            str.erase(remove(str.begin(), str.end(), '$'), str.end());
+           return str;
         }
 
         void reportError(int line_number){
             cout<<"Error found in :"<<(line_number+1)<<": "<<InputProgram[line_number]<<endl;
         }
+
 
 
 
@@ -143,8 +120,8 @@ public:
                     string num=current_instruction.substr(arrayindex+6);//array:.word9135
                     //lets assume array values are <10
                     int k=0;
-                    for(int i=arrayindex+6;i<num.length();i++){
-                        MEM[k]=stoi(num.substr(k,1));
+                    for(int i=0;i<num.length();i++){
+                        MEM[k]=stoi(num.substr(i,1));
                         k++;
                     }
                     
@@ -220,7 +197,7 @@ public:
                 else{
                     j=labelindex-1;
                     string temp="";
-                    temp=current_instruction.substr(j);
+                    temp=current_instruction.substr(0,j+1);
                     Label templabel;
                     templabel.labelname=temp;
                     templabel.address=to_string(i+1);
@@ -488,14 +465,6 @@ public:
             }
         }
         void display(){
-           /* if(programCounter<NumberOfInstructions) //display current instruction
-	        {
-		       cout<<endl<<"Executing instruction: "<<InputProgrampProgramCounter]<<endl;
-	        }
-	      else
-	       {
-		     cout<<endl<<"Executing instruction: "<<InputProgram[programCounter-1]<<endl;
-	       }*/
 
            cout<<"Registers:"<<endl<<endl;
            printf("%10s%10s\n","Register","Value");
@@ -531,6 +500,6 @@ int main(){
     cout<<"Welcome to team dynamic MIPS Simulator!!"<<endl;
     //string path;
     //cin>>path;
-    mipsSimulator simulator("mipsBubblesort.asm");
+    mipsSimulator simulator("Bubblesortlite.asm");
     simulator.execute();
 }
