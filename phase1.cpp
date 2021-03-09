@@ -480,7 +480,7 @@ public:
                 string current_instruction = readInstruction(InputProgram[programCounter-1]);
                  cout << "ProgramCounter:" << programCounter << endl;
                 processInstruction(current_instruction);
-                cout<<"Values:"<<endl;
+                cout<<"MEMORY:"<<endl;
                 for(int i=0;i<1024;i++){
                     if(MEM[i]!=0){
                          cout<<MEM[i]<<" ";
@@ -504,7 +504,7 @@ public:
             display();
             cout<<endl;
             cout<<endl;
-             cout<<"Values:"<<endl;
+             cout<<"MEMORY:"<<endl;
                 for(int i=0;i<1024;i++){
                     if(MEM[i]!=0){
                          cout<<MEM[i]<<" ";
