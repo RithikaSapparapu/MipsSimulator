@@ -1,4 +1,3 @@
-  
 #define _GLIBCXX_USE_CXX11_ABI 0
 #include <bits/stdc++.h>
 using namespace std;
@@ -225,6 +224,38 @@ public:
                       programCounter++;
                       return;
             }
+            if(current_instruction.substr(0,3)=="mul"){
+                int reg_store[3]={-1};
+                for(int i=0;i<32;i++){
+                    if(current_instruction.substr(3,2)==REG[i])
+                        reg_store[0]=i;
+                    if(current_instruction.substr(5,2)==REG[i])
+                        reg_store[1]=i;
+                    if(current_instruction.substr(7,2)==REG[i])
+                        reg_store[2]=i;
+
+                }
+               
+                     register_values[reg_store[0]]= register_values[reg_store[1]]*register_values[reg_store[2]];
+                      programCounter++;
+                      return;
+            }
+            if(current_instruction.substr(0,3)=="div"){
+                int reg_store[3]={-1};
+                for(int i=0;i<32;i++){
+                    if(current_instruction.substr(3,2)==REG[i])
+                        reg_store[0]=i;
+                    if(current_instruction.substr(5,2)==REG[i])
+                        reg_store[1]=i;
+                    if(current_instruction.substr(7,2)==REG[i])
+                        reg_store[2]=i;
+
+                }
+               
+                     register_values[reg_store[0]]= register_values[reg_store[1]]/register_values[reg_store[2]];
+                      programCounter++;
+                      return;
+            }
 
 
             if(current_instruction.substr(0,4)=="addi"){//addit2t34
@@ -252,6 +283,7 @@ public:
                 programCounter++;
                 return;
             }
+
             
             
             
@@ -379,7 +411,6 @@ public:
                 }                                     
                 value = register_values[reg_store[1]];
                 MEM[(offs + value)/4]=register_values[reg_store[0]];
-                cout << MEM[(offs + value)/4] << "  this" << endl;
                 programCounter++;
                 return;
             }
@@ -421,27 +452,20 @@ public:
                 return;
             }
         }
-        /*
+        
         void display(){
-
-           cout<<"Registers:"<<endl<<endl;
-           printf("%10s%10s\n","Register","Value");
+           cout<<"Registers:"<<"        "<<"Value:"<<endl;
+           cout<<endl;
            for(int i=0;i<32;i++){
-               printf("%10s%10s\n",REG[i],register_values[i]);
+               cout<<REG[i]<<"                 "<<register_values[i]<<endl;
            }
-           cout<<"Memory :"<<endl;
-           for(int i=0;i<1024;i++){
-               if(MEM[i]!=0){
-                   cout<<MEM[i]<<endl;
-               }
-           }
-        }*/
+        }
 
 
         //this display isnt working properly, please make changes
 
 
-        void execute(){
+        void execute(int mode){
             preprocess();
             int mainindex;
             for(int i=1;i<=NumberOfInstructions-1;i++){
@@ -451,31 +475,51 @@ public:
                 }
             }
             programCounter=mainindex+2;
-
+            if(mode==1){
             while(programCounter<=NumberOfInstructions){
                 string current_instruction = readInstruction(InputProgram[programCounter-1]);
-                cout << "programCounter" << programCounter << endl;
-                cout << current_instruction << endl;
-                //programCounter++;
+                 cout << "ProgramCounter:" << programCounter << endl;
                 processInstruction(current_instruction);
-
-                //cout << programCounter << endl;
-                //display();
+                cout<<"Values:"<<endl;
                 for(int i=0;i<1024;i++){
                     if(MEM[i]!=0){
-                        cout<<MEM[i]<<" ";
+                         cout<<MEM[i]<<" ";
                     }
                 }
+                cout<<endl;
             }
-            /*while(programCounter<=NumberOfInstructions){
-                string current_instruction = readInstruction(InputProgram[programCounter]);
+            //cout << "ProgramCounter:" << programCounter << endl;
+            cout<<endl<<endl;
+            display();
+            return;
+            }
+            else{
+                 while(programCounter<=NumberOfInstructions){
+                string current_instruction = readInstruction(InputProgram[programCounter-1]); 
                 processInstruction(current_instruction);
             }
-            display();*/
+            cout << "ProgramCounter:" << programCounter << endl;
+            cout<<endl;
+            cout<<endl;
+            display();
+            cout<<endl;
+            cout<<endl;
+             cout<<"Values:"<<endl;
+                for(int i=0;i<1024;i++){
+                    if(MEM[i]!=0){
+                         cout<<MEM[i]<<" ";
+                    }
+                }
+                cout<<endl;
+            return;
+            }
         }
 };
 int main(){
-    cout<<"Welcome to team dynamic MIPS Simulator!!"<<endl;
-    mipsSimulator simulator("mipsBubblesort.asm");
-    simulator.execute();
+    cout<<"Welcome to Team dynamic MIPS SIMULATOR!!"<<endl;
+    int mode;
+    cout<<"Enter mode(1/2):      1.Step-bystep execution   2.Final output"<<endl;
+    cin>>mode;
+    mipsSimulator simulator("BubbleSortlite.asm");
+    simulator.execute(mode);
 }
