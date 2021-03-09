@@ -1,7 +1,10 @@
+  
 #define _GLIBCXX_USE_CXX11_ABI 0
 #include <bits/stdc++.h>
 using namespace std;
 
+int register_values[32]={0};
+string REG[32]={"zero","at","v0","v1","a0","a1","a2","a3","t0","t1","t2","t3","t4","t5","t6","t7","s0","s1","s2","s3","s4","s5","s6","s7","t8","t9","k0","k1","gp","sp","fp","ra"};
 
 class mipsSimulator{
 public:
@@ -20,40 +23,32 @@ public:
         };
         vector<struct Memoryword>Mem;
         vector<struct Label>labeltable;
-         int register_values[32]={0};
-         string REG[32]={"zero","at","v0","v1","a0","a1","a2","a3","t0","t1","t2","t3","t4","t5","t6","t7","s0","s1","s2","s3","s4","s5","s6","s7","t8","t9","k0","k1","gp","sp","fp","ra"};
-        string instructions[16] = {"add","sub","mul","div","sll","slt","srl","jr","lw","sw","la","lui","addi","beq","bne","j"};
-    mipsSimulator(string fileName){
-       programCounter=0;
-       NumberOfInstructions=0;
-       MaxLength=10000;
 
+        mipsSimulator(string fileName){
+        programCounter=0;
+        NumberOfInstructions=0;
+        MaxLength=10000;
 
         ifstream InputFile;
         InputFile.open(fileName.c_str(),ios::in); //open file
-        if(!InputFile) //if open failed
-        {
+        if(!InputFile){ //if open failed
             cout<<"Error: File does not exist or could not be opened"<<endl;
             exit(1);
         }
         string tempString;
-        while(getline(InputFile,tempString)) //read line by line
-        {
+        while(getline(InputFile,tempString)){ //read line by line
         //readInstruction(tempString);
             NumberOfInstructions++;
-            if(NumberOfInstructions>MaxLength) ///check number of instructions with maximum allowed
-            {
+            if(NumberOfInstructions>MaxLength){ ///check number of instructions with maximum allowed
                 cout<<"Error: Number of lines in input too large, maximum allowed is "<<MaxLength<<" line"<<endl;
                 exit(1);
             }
             InputProgram.push_back(tempString); //store in InputProgram
         }
         InputFile.close();
-
-    }
-       string readInstruction(string str){
-            if(str.find("#")!=-1) //remove comments
-                    {
+        }
+        string readInstruction(string str){
+            if(str.find("#")!=-1){ //remove comments
                     str=str.substr(0,str.find("#"));
                     }
             str.erase(remove(str.begin(), str.end(), ' '), str.end());
@@ -65,12 +60,6 @@ public:
         void reportError(int line_number){
             cout<<"Error found in :"<<(line_number+1)<<": "<<InputProgram[line_number]<<endl;
         }
-
-
-
-
-
-
 
         void preprocess(){
             int i=0,j=0;
@@ -107,35 +96,24 @@ public:
                     wordindex=current_instruction.find(".word");
                     int storeline;
                     if(wordindex==-1 && arrayindex==-1){
-                        if(current_instruction.find(".text")==-1) //if text section has not started
-                        {
+                        if(current_instruction.find(".text")==-1){ //if text section has not started
                             cout<<"Error: Unexpected symbol in data section"<<endl;
                         }
-                        else
-                        {
+                        else{
                             break;
                         }
                     }
-                else{
-                    string num=current_instruction.substr(arrayindex+6);//array:.word9135
-                    //lets assume array values are <10
-                    int k=0;
-                    for(int i=0;i<num.length();i++){
-                        MEM[k]=stoi(num.substr(i,1));
-                        k++;
-                    }
-                    
-                } 
+                    else{
+                        string num=current_instruction.substr(arrayindex+6);//array:.word9135
+                        //lets assume array values are <10
+                        int k=0;
+                        for(int i=0;i<num.length();i++){
+                            MEM[k]=stoi(num.substr(i,1));
+                            k++;
+                        }
+                    } 
                 }
             }
-            /*for(i=0;Mem.size()>0 && i<Mem.size()-1;i++) //check for duplicates
-            {
-                if(Mem[i].value==Mem[i+1].value)
-                {
-                    cout<<"Error: One or more labels are repeated"<<endl;
-                    exit(1);
-                }
-            }*/
             int textIndex=0;
             int textFlag=0;
 
@@ -202,7 +180,6 @@ public:
                     templabel.labelname=temp;
                     templabel.address=to_string(i+1);
                     labeltable.push_back(templabel);
-
                 }
             }
             for(i=0;labeltable.size()>0 && i<(labeltable.size()-1);i++) //check for duplicates
@@ -216,29 +193,8 @@ public:
         }
 
 
-        string search(string current_instruction) {
-            string temp="";
-            int n=instructions->length();
-            for (int i = 0; i <n; i++) {
-            int pos=0;
-            while(pos<3)
-                if (current_instruction.find(instructions[i],pos) == 0) {
-                    temp=instructions[i];
-                    break;
-                }
-                pos++;
-            }
-            if(temp!=""){
-                return temp;
-            }
-            else{
-                return NULL;
-            }
-        }
-
-
         void processInstruction(string current_instruction){
-            if(current_instruction.substr(0,3)=="add"){
+            if(current_instruction.substr(0,3)=="add" && current_instruction.substr(3,1)!="i"){
                 int reg_store[3]={-1};
                 for(int i=0;i<32;i++){
                     if(current_instruction.substr(3,2)==REG[i])
@@ -247,15 +203,13 @@ public:
                         reg_store[1]=i;
                     if(current_instruction.substr(7,2)==REG[i])
                         reg_store[2]=i;
-
                 }
         
-                    register_values[reg_store[0]]= register_values[reg_store[1]]+ register_values[reg_store[2]];
-                    programCounter++;
-
-
+                register_values[reg_store[0]]= register_values[reg_store[1]]+ register_values[reg_store[2]];
+                programCounter++;
+                return;
             }
-            else if(current_instruction.substr(0,3)=="sub"){
+            if(current_instruction.substr(0,3)=="sub"){
                 int reg_store[3]={-1};
                 for(int i=0;i<32;i++){
                     if(current_instruction.substr(3,2)==REG[i])
@@ -269,41 +223,43 @@ public:
                
                      register_values[reg_store[0]]= register_values[reg_store[1]]-register_values[reg_store[2]];
                       programCounter++;
+                      return;
             }
-            else if(current_instruction.substr(0,4)=="addi"){
+
+
+            if(current_instruction.substr(0,4)=="addi"){//addit2t34
                 string rs,rd,imm;
                 int immediate;
                 rd=current_instruction.substr(4,2);
                 if(current_instruction.substr(6,2)!="ze"){
-                    rd=current_instruction.substr(6,2);
+                    rs=current_instruction.substr(6,2);
                     imm=current_instruction.substr(8);
                     immediate=stoi(imm);
                 }
                 else{
-                     rd=current_instruction.substr(6,4);
+                     rs=current_instruction.substr(6,4);
                      imm=current_instruction.substr(10);
                     immediate=stoi(imm);
                 }
                 int reg_store[2]={-1};
                 for(int i=0;i<32;i++){
-                    if(REG[i].find(rd)!=-1){
+                    if(rd==REG[i])
                         reg_store[0]=i;
-                    }
-                    if(REG[i].find(rs)!=-1){
+                    if(rs==REG[i])
                         reg_store[1]=i;
-                    }
                 }
                 register_values[reg_store[0]]=immediate+register_values[reg_store[1]];
-                 programCounter++;
+                programCounter++;
+                return;
             }
             
             
             
-            else if(current_instruction.substr(0,3)=="beq"){
+            if(current_instruction.substr(0,3)=="beq"){
                 string st;
                 int reg_store[2]={-1};
                 if(current_instruction.substr(5,2)=="ze"){
-                    for(int i=0;i<33;i++){
+                    for(int i=0;i<32;i++){
                         if(current_instruction.substr(3,2)==REG[i])
                             reg_store[0]=i;
                         if(current_instruction.substr(5,4)==REG[i]) //beqt0zeroLABEL
@@ -312,7 +268,7 @@ public:
                     st = current_instruction.substr(9);
                 }
                 else{
-                    for(int i=0;i<33;i++){
+                    for(int i=0;i<32;i++){
                         if(current_instruction.substr(3,2)==REG[i])
                             reg_store[0]=i;
                         if(current_instruction.substr(5,2)==REG[i])
@@ -328,22 +284,19 @@ public:
                     }
                 }
                 if(register_values[reg_store[0]]==register_values[reg_store[1]]){
-                    programCounter=stoi(addr);
+                    programCounter=stoi(addr) + 1;
                 }
                 else{
                     programCounter++;
                 }
-
+                return;
             }
 
-
-
-
-            else if(current_instruction.substr(0,3)=="bne"){
+            if(current_instruction.substr(0,3)=="bne"){
                 string st;
                 int reg_store[2]={-1};
-                if(current_instruction.substr(5,2)=="ze"){
-                    for(int i=0;i<33;i++){
+                if(current_instruction.substr(5,2)=="ze"){  //bnet2t3LABEL
+                    for(int i=0;i<32;i++){
                         if(current_instruction.substr(3,2)==REG[i])
                             reg_store[0]=i;
                         if(current_instruction.substr(5,4)==REG[i]) //beqt0zeroLABEL
@@ -352,7 +305,7 @@ public:
                     st = current_instruction.substr(9);
                 }
                 else{
-                    for(int i=0;i<33;i++){
+                    for(int i=0;i<32;i++){
                         if(current_instruction.substr(3,2)==REG[i])
                             reg_store[0]=i;
                         if(current_instruction.substr(5,2)==REG[i])
@@ -367,18 +320,15 @@ public:
                     }
                 }
                 if(register_values[reg_store[0]]!=register_values[reg_store[1]]){
-                    programCounter=stoi(addr);
+                    programCounter=stoi(addr) + 1;
                 }
                 else{
                     programCounter++;
                 }
-
+                return;
             }
 
-
-
-
-            else if(current_instruction.substr(0,1)=="j"){
+            if(current_instruction.substr(0,1)=="j" && current_instruction.substr(1,1)!="r"){
               
                 string st = current_instruction.substr(1);
                 string addr;
@@ -387,16 +337,17 @@ public:
                         addr=labeltable[i].address;
                     }
                 }
-               programCounter=stoi(addr);
+               programCounter=stoi(addr) + 1;
+               return;
 
             }
-           else if(current_instruction.substr(0,2)=="lw"){
+           if(current_instruction.substr(0,2)=="lw"){
                   string rd,rs,offset;
                   rd=current_instruction.substr(2,2);
                   int index=current_instruction.find("(");
                   rs=current_instruction.substr(index+1,2);
                   offset=current_instruction.substr(4,index-4);
-                int offs = stoi(offset)/4;
+                int offs = stoi(offset);
                 int value;
                 int reg_store[2]={-1};
                 for(int i=0;i<32;i++){
@@ -408,14 +359,15 @@ public:
                 value = register_values[reg_store[0]];
                 register_values[reg_store[1]] = MEM[(offs + value)/4];
                 programCounter++;
+                return;
              }
-            else if(current_instruction.substr(0,2)=="sw"){
+            if(current_instruction.substr(0,2)=="sw"){
                   string rd,rs,offset;
                   rs=current_instruction.substr(2,2);
                   int index=current_instruction.find("(");
                   rd=current_instruction.substr(index+1,2);
                   offset=current_instruction.substr(4,index-4);
-                int offs = stoi(offset)/4;
+                int offs = stoi(offset);
                 int value;
 
                 int reg_store[2]={-1};
@@ -427,9 +379,11 @@ public:
                 }                                     
                 value = register_values[reg_store[1]];
                 MEM[(offs + value)/4]=register_values[reg_store[0]];
+                cout << MEM[(offs + value)/4] << "  this" << endl;
                 programCounter++;
+                return;
             }
-            else if(current_instruction.substr(0,3)=="slt"){
+            if(current_instruction.substr(0,3)=="slt"){
                 string rd,src1,src2;
                 rd=current_instruction.substr(3,2);
                 src1=current_instruction.substr(5,2);
@@ -447,11 +401,12 @@ public:
                     register_values[reg_store[2]]=1;
                 }
                 else{
-                     register_values[reg_store[2]]=1;
+                     register_values[reg_store[2]]=0;
                 }
                 programCounter++;
+                return;
             }
-            else if(current_instruction.substr(0,2)=="la"){ //las0array
+            if(current_instruction.substr(0,2)=="la"){ //las0array
                 for(int i=0;i<32;i++){
                     if(current_instruction.substr(2,2)==REG[i]){
                         register_values[i]=0; //MEM[0]=0;
@@ -459,11 +414,14 @@ public:
                     }
                 }
                 programCounter++;
+                return;
             }
-            else{
-                exit(0);
+            if(current_instruction.substr(0,2)=="jr"){
+                programCounter++;
+                return;
             }
         }
+        /*
         void display(){
 
            cout<<"Registers:"<<endl<<endl;
@@ -477,29 +435,47 @@ public:
                    cout<<MEM[i]<<endl;
                }
            }
-        }
+        }*/
+
+
+        //this display isnt working properly, please make changes
+
 
         void execute(){
             preprocess();
             int mainindex;
-            for(int i=1;i<=NumberOfInstructions;i++){
+            for(int i=1;i<=NumberOfInstructions-1;i++){
                 if(InputProgram[i]=="main:"){
                 mainindex=i;
                 break;
                 }
             }
-            programCounter=mainindex+1;
+            programCounter=mainindex+2;
+
             while(programCounter<=NumberOfInstructions){
+                string current_instruction = readInstruction(InputProgram[programCounter-1]);
+                cout << "programCounter" << programCounter << endl;
+                cout << current_instruction << endl;
+                //programCounter++;
+                processInstruction(current_instruction);
+
+                //cout << programCounter << endl;
+                //display();
+                for(int i=0;i<1024;i++){
+                    if(MEM[i]!=0){
+                        cout<<MEM[i]<<" ";
+                    }
+                }
+            }
+            /*while(programCounter<=NumberOfInstructions){
                 string current_instruction = readInstruction(InputProgram[programCounter]);
                 processInstruction(current_instruction);
             }
-            display();
-    }
+            display();*/
+        }
 };
 int main(){
     cout<<"Welcome to team dynamic MIPS Simulator!!"<<endl;
-    //string path;
-    //cin>>path;
-    mipsSimulator simulator("Bubblesortlite.asm");
+    mipsSimulator simulator("mipsBubblesort.asm");
     simulator.execute();
 }
