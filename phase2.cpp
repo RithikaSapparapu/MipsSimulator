@@ -532,6 +532,18 @@ public:
             if(ins.substr(0,3)=="add"){
                 return ins.substr(3,2);
             }
+            if(ins.substr(0,3)=="sub"){
+                return ins.substr(3,2);
+            }
+            if(ins.substr(0,3)=="mul"){
+                return ins.substr(3,2);
+            }
+            if(ins.substr(0,3)=="div"){
+                return ins.substr(3,2);
+            }
+            if(ins.substr(0,3)=="slt"){
+                return ins.substr(3,2);
+            }
             //if ..... other functions
         }
 //add
@@ -548,14 +560,16 @@ public:
         void fillPipeline(int numb_rows,int flagForwdg){
             int j;
             for(int i=0; i<numb_rows; i++){
-                j=clock+1;  //this keeps on updating j to the point where the filling of the next instruction starts
+                j=clock+1;
+                //add t1 t2 t3
+                //add t3 t1 t1
 
                 if(pipeline[i][0].substr(0,4)=="addi"){
                     if(i!=0 && pipeline[i][0].substr(6,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
                             fill(i,j,0,0,2,0,0);
                         }
-                        else{//with forwarding
+                        else{//
                             fill(i,j,0,0,0,0,0);
                         }
                         clock++;
@@ -567,8 +581,65 @@ public:
                 }
 
                 if(pipeline[i][0].substr(0,3)=="add"){
-                    //pipeline for add instruction.
+                    if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
+                        if(flagForwdg==0){//no forwarding
+                            fill(i,j,0,0,2,0,0);
+                        }
+                        else{//with forwarding
+                            fill(i,j,0,0,0,0,0);
+                        }
+                        clock++;
+                    }
                 }
+
+                if(pipeline[i][0].substr(0,3)=="sub"){
+                    if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
+                        if(flagForwdg==0){//no forwarding
+                            fill(i,j,0,0,2,0,0);
+                        }
+                        else{//with forwarding
+                            fill(i,j,0,0,0,0,0);
+                        }
+                        clock++;
+                    }
+                }
+
+                if(pipeline[i][0].substr(0,3)=="mul"){
+                    if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
+                        if(flagForwdg==0){//no forwarding
+                            fill(i,j,0,0,2,0,0);
+                        }
+                        else{//with forwarding
+                            fill(i,j,0,0,0,0,0);
+                        }
+                        clock++;
+                    }
+                }
+
+                if(pipeline[i][0].substr(0,3)=="div"){
+                    if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
+                        if(flagForwdg==0){//no forwarding
+                            fill(i,j,0,0,2,0,0);
+                        }
+                        else{//with forwarding
+                            fill(i,j,0,0,0,0,0);
+                        }
+                        clock++;
+                    }
+                }
+
+                if(pipeline[i][0].substr(0,3)=="slt"){
+                    if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
+                        if(flagForwdg==0){//no forwarding
+                            fill(i,j,0,0,2,0,0);
+                        }
+                        else{//with forwarding
+                            fill(i,j,0,0,0,0,0);
+                        }
+                        clock++;
+                    }
+                }
+
             }
         }
 
