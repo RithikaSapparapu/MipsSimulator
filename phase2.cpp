@@ -554,6 +554,51 @@ public:
             }
             return flag;
         }
+        //fill(i,i,000000)
+        void stalls_hazard(int ins_row){
+            int IF,ID,EX,MEM;
+            int clk_len=0;
+            for(int i=0;i<500;i++){
+                if(pipeline[ins_row][i]=="WB")
+                  clk_len=i;
+            }
+            for(int i=0;i<clk_len;i++){
+              if(pipeline[ins_row][i]=="IF")
+              IF=i;
+               if(pipeline[ins_row][i]=="ID")
+              ID=i;
+               if(pipeline[ins_row][i]=="EX")
+              EX=i;
+               if(pipeline[ins_row][i]=="MEM")
+              MEM=i;
+            }
+           // int cnt1=0,cnt2=0,cnt3=0,cnt4=0;
+            for(int i=IF+1;i<ID;i++){
+                if(pipeline[ins_row][i]=="stall"){
+                  //fill(ins_row+1,i,0,1,0,0,0);
+                  pipeline[ins_row+1][i]=="stall";
+
+                }
+            }
+            for(int i=ID+1;i<EX;i++){
+                if(pipeline[ins_row][i]=="stall"){
+                 // fill(ins_row+1,i,0,0,1,0,0);
+                  pipeline[ins_row+1][i]=="stall";
+                }
+            }
+            for(int i=EX+1;i<MEM;i++){
+                if(pipeline[ins_row][i]=="stall"){
+                  //fill(ins_row+1,i,0,0,0,1,0);
+                  pipeline[ins_row+1][i]=="stall";
+                }
+            }
+            for(int i=MEM+1;i<clk_len;i++){
+                if(pipeline[ins_row][i]=="stall"){
+                  //fill(ins_row+1,i,0,0,0,0,1);
+                  pipeline[ins_row+1][i]=="stall";
+                }
+            }
+        }
 //add
 //slt
 //sub 
@@ -579,12 +624,15 @@ public:
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
+                            stalls_hazard(i-1);
                         }
                         else{//with forwarding
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                             else
                             fill(i,j,0,0,0,0,0);
+
+
                         }
                         clock++;
                     }
@@ -604,6 +652,8 @@ public:
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
+                            stalls_hazard(i-1);
+                            
                         }
                         else{//with forwarding
                              if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
@@ -629,6 +679,7 @@ public:
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
+                            stalls_hazard(i-1);
                         }
                         else{//with forwarding
                              if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
@@ -654,6 +705,7 @@ public:
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
+                            stalls_hazard(i-1);
                         }
                         else{//with forwarding
                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
@@ -679,6 +731,7 @@ public:
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
+                            stalls_hazard(i-1);
                         }
                         else{//with forwarding
                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
@@ -704,6 +757,7 @@ public:
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
+                            stalls_hazard(i-1);
                         }
                         else{//with forwarding
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
@@ -724,16 +778,39 @@ public:
                 if(pipeline[i][0].substr(0,3)=="beq"){
                      int pc;
                      branch_flag=0;
-                     for(int i=0;i<NumberOfInstructions;i++){
-                         if(pipeline[i][0]==InputProgram[i])
-                            pc=i+1;
+                     for(int j=0;j<NumberOfInstructions;j++){
+                         if(pipeline[i][0]==InputProgram[j])
+                            pc=i+1;                         
                      }
                      if(pipeline[i+1][0]!=InputProgram[pc+1])
                      branch_flag=1;
                      else
                      branch_flag=0;
                     if(pipeline[i][0].substr(3,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0])){
+                       if(flagForwdg==0){
+                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
+                            fill(i,j,1,0,2,0,0);
+                            else
+                            fill(i,j,0,0,2,0,0);
+                            stalls_hazard(i-1);
+                       }
+                       else{
+                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
+                            fill(i,j,1,0,0,0,0);
+                            else
+                            fill(i,j,0,0,0,0,0);
+                       }
+                       clock++;
                     }
+                     else{
+                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
+                            fill(i,j,1,0,0,0,0);
+                        else
+                        fill(i,j,0,0,0,0,0);
+                        clock++;
+                    }
+
+                    
 
                 }
                  if(pipeline[i][0].substr(0,3)=="bne"){
@@ -747,6 +824,31 @@ public:
                      branch_flag=1;
                      else
                      branch_flag=0;
+                     if(pipeline[i][0].substr(3,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0])){
+                       if(flagForwdg==0){
+                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
+                            fill(i,j,1,0,2,0,0);
+                            else
+                            fill(i,j,0,0,2,0,0);
+                            stalls_hazard(i-1);
+                       }
+                       else{
+                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
+                            fill(i,j,1,0,0,0,0);
+                            else
+                            fill(i,j,0,0,0,0,0);
+                       }
+                       clock++;
+                    }
+                     else{
+                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
+                            fill(i,j,1,0,0,0,0);
+                        else
+                        fill(i,j,0,0,0,0,0);
+                        clock++;
+                    }
+
+
                 }
                  if(pipeline[i][0].substr(0,1)=="j" && pipeline[i][0].substr(1,1)!="r"){
                     int pc;
@@ -759,7 +861,29 @@ public:
                      branch_flag=1;
                      else
                      branch_flag=0;
-
+                     if(pipeline[i][0].substr(3,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0])){
+                       if(flagForwdg==0){
+                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
+                            fill(i,j,1,0,2,0,0);
+                            else
+                            fill(i,j,0,0,2,0,0);
+                            stalls_hazard(i-1);
+                       }
+                       else{
+                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
+                            fill(i,j,1,0,0,0,0);
+                            else
+                            fill(i,j,0,0,0,0,0);
+                       }
+                       clock++;
+                    }
+                     else{
+                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
+                            fill(i,j,1,0,0,0,0);
+                        else
+                        fill(i,j,0,0,0,0,0);
+                        clock++;
+                    }
                 }
                   if(pipeline[i][0].substr(0,2)=="lw"){
                     if(i!=0 && pipeline[i][0].substr(pipeline[i][0].length()-3,2) == hazard(pipeline[i-1][0])){
