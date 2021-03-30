@@ -7,6 +7,12 @@ string REG[32]={"zero","at","v0","v1","a0","a1","a2","a3","t0","t1","t2","t3","t
 
 
 string pipeline[100][500];
+
+
+
+//initialise all values of pipeline to null;
+
+
 class mipsSimulator{
 public:
     int MEM[1024]={0};
@@ -459,8 +465,6 @@ public:
 
 
 
-
-
         void fill(int x,int y,int iF, int id, int ex, int mem, int wb){
               while(pipeline[x][y]=="stall"){
                 y++;
@@ -600,6 +604,7 @@ public:
             int j;
             for(int i=0; i<numb_rows; i++){
                 j=clock+1;
+
                 if(pipeline[i][0].substr(0,4)=="addi"){
                     if(i!=0 && pipeline[i][0].substr(6,2) == hazard(pipeline[i-1][0])){
                          if(flagForwdg==0){//no forwarding
@@ -607,8 +612,7 @@ public:
                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,2,0,0);
                             else
-                            fill(i,j,0,0,2,0,0);
-                           
+                            fill(i,j,0,0,2,0,0);      
                         }
                         else{//with forwarding
                             stalls_hazard(i-1);
@@ -616,12 +620,14 @@ public:
                             fill(i,j,1,0,0,0,0);
                             else
                             fill(i,j,0,0,0,0,0);
-
-
                         }
                         clock++;
                     }
-                    else{
+                    else if(i==0){
+                        fill(i,j,0,0,0,0,0);
+                        clock++;
+                    }
+                    else{   //i!=0 and no hazard in previous instruction
                          stalls_hazard(i-1);
                          if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
@@ -630,8 +636,7 @@ public:
                         clock++;
                     }
                 }
-
-                if(pipeline[i][0].substr(0,3)=="add"){
+if(pipeline[i][0].substr(0,3)=="add"){
                     if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
                          stalls_hazard(i-1);
@@ -953,18 +958,53 @@ public:
                     }
                 }
 
+
+                if(pipeline[i][0].substr(0,2)=="la"){   //data and structural hazards not possible in la
+                        stalls_hazard(i-1);
+                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
+                            fill(i,j,1,0,0,0,0);
+                        else
+                        fill(i,j,0,0,0,0,0);
+                        clock++;
+                }
+
+
+                if(pipeline[i][0].substr(0,2)=="jr"){   //data and structural hazards not possible in jr
+                    stalls_hazard(i-1);
+                    if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
+                        fill(i,j,1,0,0,0,0);
+                    else
+                    fill(i,j,0,0,0,0,0);
+                    clock++;
+                }
             }
         }
 
-       /* void display(){
+
+        
+
+
+
+
+
+
+        void display(){
            cout<<"Registers:"<<"        "<<"Value:"<<endl;
            cout<<endl;
            for(int i=0;i<32;i++){
                cout<<REG[i]<<"                 "<<register_values[i]<<endl;
            }
-        }*/
+        }
 
-        void execute(int flagforwardg){
+        void execute(int flag){
+            /*
+            for(int i=0;i<100;i++){
+                for(int j=0;j<500;j++){
+                    pipeline[i][j] = "null";
+                }
+            }*/
+
+
             preprocess();
             int mainindex;
             for(int i=1;i<=NumberOfInstructions-1;i++){
@@ -974,6 +1014,29 @@ public:
                 }
             }
             programCounter=mainindex+2;
+
+            /*
+            if(mode==1){
+            while(programCounter<=NumberOfInstructions){
+                string current_instruction = readInstruction(InputProgram[programCounter-1]);
+                 cout << "ProgramCounter:" << programCounter << endl;
+                processInstruction(current_instruction);
+                cout<<"MEMORY:"<<endl;
+                for(int i=0;i<1024;i++){
+                    if(MEM[i]!=0){
+                         cout<<MEM[i]<<" ";
+                    }
+                }
+                cout<<endl;
+            }
+            //cout << "ProgramCounter:" << programCounter << endl;
+            cout<<endl<<endl;
+            display();
+            return;
+            }
+            */
+
+            //else{
             int pipeRow = 0;
             while(programCounter<=NumberOfInstructions){
                 string current_instruction = readInstruction(InputProgram[programCounter-1]); 
@@ -982,9 +1045,45 @@ public:
                 pipeline[pipeRow][0]=current_instruction;
                 pipeRow++;
             }
-            fillPipeline(pipeRow, flagforwardg);
+            fillPipeline(pipeRow, flag);
+
+            for(int j=0;j<500;j++){
+                if(pipeline[pipeRow][j] == "WB"){
+                    cout << "Total number of clock cycles: " << j << endl;
+                    break;
+                }
+            }
+
+            string stallInstruction[100];
+            int count=0;
+            int k=0;
+            for(int i=0; i<pipeRow ;i++){
+                for(int j=0;j<500;j++){
+                    if(pipeline[i][j]=="stall"){
+                        count++;
+                        stallInstruction[k] = pipeline[i][0];
+                    }
+                    k++;
+                    /*if( pipeline[i][j]="WB")
+                        break;*/
+                }
+            }
+
+            cout << "Total number of stalls: " << count <<endl;
+
+            cout << "List of instructions for which stalls occur: " << endl;
+
+            for(int i=0;i<k;i++){
+                cout << stallInstruction[i] << endl;
+            }
+
+            /*
+            cout << "ProgramCounter:" << programCounter << endl;
             cout<<endl;
             cout<<endl;
+            //display();
+            cout<<endl;
+            cout<<endl;*/
              cout<<"MEMORY:"<<endl;
                 for(int i=0;i<1024;i++){
                     if(MEM[i]!=0){
@@ -993,13 +1092,21 @@ public:
                 }
                 cout<<endl;
             return;
+            //}
         }
 };
 int main(){
     cout<<"Welcome to Team dynamic MIPS SIMULATOR!!"<<endl;
-    int mode;
-    cout<<"Enter mode 1 or 2:      1.Without Forwarding   2.With Forwarding"<<endl;
-    cin>>mode;
-    mipsSimulator simulator("sample.asm");
-    simulator.execute(mode);
+    /*int mode;
+    cout<<"Enter mode 1 or 2:      1.Step-bystep execution   2.Final output"<<endl;
+    cin>>mode;*/
+    //mode 2 is changed to nly print the current instruction.
+
+    //mipsSimulator simulator("mipsBubblesort.asm");
+    mipsSimulator simulator("BubbleSort.asm");
+
+    int flagFrwd;
+    cout << "enter 1 for forwarding and 0 for no forwarding";
+    cin >> flagFrwd;
+    simulator.execute(flagFrwd);
 }
