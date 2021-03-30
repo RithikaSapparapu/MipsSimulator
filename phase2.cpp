@@ -7,35 +7,6 @@ string REG[32]={"zero","at","v0","v1","a0","a1","a2","a3","t0","t1","t2","t3","t
 
 
 string pipeline[100][500];
-
-
-
-//initialise all values of pipeline to null;
-
-/*
-int clock = 0;
-int stallsNum = 0;
-class pipeline{
-    public:
-        int dataForwd = 0;
-        string curr_ins;
-        void IF(){
-            clock++;
-        }
-        void ID_RF(){
-        }
-        void EX(){
-            if(dataForwd == 1){
-            }
-        }
-        void MEM(){
-        }
-        
-        void WB(){
-        }
-};*/
-
-
 class mipsSimulator{
 public:
     int MEM[1024]={0};
@@ -491,21 +462,33 @@ public:
 
 
         void fill(int x,int y,int iF, int id, int ex, int mem, int wb){
+              while(pipeline[x][y]=="stall"){
+                y++;
+            }
             for(int k=y; k<y+iF; k++){
                 pipeline[x][k]="stall";
             }
             pipeline[x][y]="IF";    
             y++;
+            while(pipeline[x][y]=="stall"){
+                y++;
+            }
             for(int k=y; k<y+id; k++){
                 pipeline[x][k]="stall";
             }
             pipeline[x][y]="ID";
             y++;
+             while(pipeline[x][y]=="stall"){
+                y++;
+            }
             for(int k=y; k<y+ex; k++){
                 pipeline[x][k]="stall";
             }
             pipeline[x][y]="EX";
             y++;
+             while(pipeline[x][y]=="stall"){
+                y++;
+            }
             for(int k=y; k<y+mem; k++){
                 pipeline[x][k]="stall";
             }
@@ -513,6 +496,9 @@ public:
             y++;
             for(int k=y; k<=y+wb; k++){
                 pipeline[x][k]="stall";
+            }
+             while(pipeline[x][y]=="stall"){
+                y++;
             }
             pipeline[x][y]="WB";
         }
@@ -558,44 +544,44 @@ public:
         void stalls_hazard(int ins_row){
             int IF,ID,EX,MEM;
             int clk_len=0;
-            for(int i=0;i<500;i++){
-                if(pipeline[ins_row][i]=="WB")
-                  clk_len=i;
+            for(int j=1;j<500;j++){
+                if(pipeline[ins_row][j]=="WB")
+                  clk_len=j;
             }
-            for(int i=0;i<clk_len;i++){
-              if(pipeline[ins_row][i]=="IF")
-              IF=i;
-               if(pipeline[ins_row][i]=="ID")
-              ID=i;
-               if(pipeline[ins_row][i]=="EX")
-              EX=i;
-               if(pipeline[ins_row][i]=="MEM")
-              MEM=i;
+            for(int j=1;j<clk_len;j++){
+              if(pipeline[ins_row][j]=="IF")
+              IF=j;
+               if(pipeline[ins_row][j]=="ID")
+              ID=j;
+               if(pipeline[ins_row][j]=="EX")
+              EX=j;
+               if(pipeline[ins_row][j]=="MEM")
+              MEM=j;
             }
            // int cnt1=0,cnt2=0,cnt3=0,cnt4=0;
-            for(int i=IF+1;i<ID;i++){
-                if(pipeline[ins_row][i]=="stall"){
+            for(int j=IF+1;j<ID;j++){
+                if(pipeline[ins_row][j]=="stall"){
                   //fill(ins_row+1,i,0,1,0,0,0);
-                  pipeline[ins_row+1][i]=="stall";
+                  pipeline[ins_row+1][j]=="stall";
 
                 }
             }
-            for(int i=ID+1;i<EX;i++){
-                if(pipeline[ins_row][i]=="stall"){
+            for(int j=ID+1;j<EX;j++){
+                if(pipeline[ins_row][j]=="stall"){
                  // fill(ins_row+1,i,0,0,1,0,0);
-                  pipeline[ins_row+1][i]=="stall";
+                  pipeline[ins_row+1][j]=="stall";
                 }
             }
-            for(int i=EX+1;i<MEM;i++){
-                if(pipeline[ins_row][i]=="stall"){
+            for(int j=EX+1;j<MEM;j++){
+                if(pipeline[ins_row][j]=="stall"){
                   //fill(ins_row+1,i,0,0,0,1,0);
-                  pipeline[ins_row+1][i]=="stall";
+                  pipeline[ins_row+1][j]=="stall";
                 }
             }
-            for(int i=MEM+1;i<clk_len;i++){
-                if(pipeline[ins_row][i]=="stall"){
+            for(int j=MEM+1;j<clk_len;j++){
+                if(pipeline[ins_row][j]=="stall"){
                   //fill(ins_row+1,i,0,0,0,0,1);
-                  pipeline[ins_row+1][i]=="stall";
+                  pipeline[ins_row+1][j]=="stall";
                 }
             }
         }
@@ -614,19 +600,18 @@ public:
             int j;
             for(int i=0; i<numb_rows; i++){
                 j=clock+1;
-                //add t1 t2 t3
-                //add t3 t1 t1
-
                 if(pipeline[i][0].substr(0,4)=="addi"){
                     if(i!=0 && pipeline[i][0].substr(6,2) == hazard(pipeline[i-1][0])){
                          if(flagForwdg==0){//no forwarding
+                            stalls_hazard(i-1);
                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
-                            stalls_hazard(i-1);
+                           
                         }
                         else{//with forwarding
+                            stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                             else
@@ -637,6 +622,7 @@ public:
                         clock++;
                     }
                     else{
+                         stalls_hazard(i-1);
                          if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                         else
@@ -648,14 +634,16 @@ public:
                 if(pipeline[i][0].substr(0,3)=="add"){
                     if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
+                         stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
-                            stalls_hazard(i-1);
+                           
                             
                         }
                         else{//with forwarding
+                         stalls_hazard(i-1);
                              if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                             else
@@ -664,6 +652,7 @@ public:
                         clock++;
                     }
                     else{
+                         stalls_hazard(i-1);
                          if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                         else
@@ -675,13 +664,15 @@ public:
                 if(pipeline[i][0].substr(0,3)=="sub"){
                     if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
+                         stalls_hazard(i-1);
                              if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
-                            stalls_hazard(i-1);
+                            //stalls_hazard(i-1);
                         }
                         else{//with forwarding
+                             stalls_hazard(i-1);
                              if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                             else
@@ -690,6 +681,7 @@ public:
                         clock++;
                     }
                     else{
+                         stalls_hazard(i-1);
                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                         else
@@ -701,13 +693,15 @@ public:
                 if(pipeline[i][0].substr(0,3)=="mul"){
                     if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
+                         stalls_hazard(i-1);
                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
-                            stalls_hazard(i-1);
+                           // stalls_hazard(i-1);
                         }
                         else{//with forwarding
+                            stalls_hazard(i-1);
                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                             else
@@ -716,6 +710,7 @@ public:
                         clock++;
                     }
                     else{
+                         stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                         else
@@ -727,13 +722,15 @@ public:
                 if(pipeline[i][0].substr(0,3)=="div"){
                     if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
+                         stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
-                            stalls_hazard(i-1);
+                            //stalls_hazard(i-1);
                         }
                         else{//with forwarding
+                            stalls_hazard(i-1);
                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                             else
@@ -742,6 +739,7 @@ public:
                         clock++;
                     }
                     else{
+                         stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                         else
@@ -753,13 +751,15 @@ public:
                 if(pipeline[i][0].substr(0,3)=="slt"){
                     if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
+                             stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
-                            stalls_hazard(i-1);
+                            //stalls_hazard(i-1);
                         }
                         else{//with forwarding
+                             stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                             else
@@ -768,6 +768,7 @@ public:
                         clock++;
                     }
                     else{
+                         stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                         else
@@ -788,13 +789,15 @@ public:
                      branch_flag=0;
                     if(pipeline[i][0].substr(3,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0])){
                        if(flagForwdg==0){
+                            stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
-                            stalls_hazard(i-1);
+                            //stalls_hazard(i-1);
                        }
                        else{
+                             stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                             else
@@ -803,6 +806,7 @@ public:
                        clock++;
                     }
                      else{
+                          stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                         else
@@ -816,8 +820,8 @@ public:
                  if(pipeline[i][0].substr(0,3)=="bne"){
                     int pc;
                      branch_flag=0;
-                     for(int i=0;i<NumberOfInstructions;i++){
-                         if(pipeline[i][0]==InputProgram[i])
+                     for(int j=0;j<NumberOfInstructions;j++){
+                         if(pipeline[i][0]==InputProgram[j])
                             pc=i+1;
                      }
                      if(pipeline[i+1][0]!=InputProgram[pc+1])
@@ -826,13 +830,15 @@ public:
                      branch_flag=0;
                      if(pipeline[i][0].substr(3,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0])){
                        if(flagForwdg==0){
+                            stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
-                            stalls_hazard(i-1);
+                           // stalls_hazard(i-1);
                        }
                        else{
+                           stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                             else
@@ -841,6 +847,7 @@ public:
                        clock++;
                     }
                      else{
+                         stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                         else
@@ -853,7 +860,7 @@ public:
                  if(pipeline[i][0].substr(0,1)=="j" && pipeline[i][0].substr(1,1)!="r"){
                     int pc;
                      branch_flag=0;
-                     for(int i=0;i<NumberOfInstructions;i++){
+                     for(int j=0;i<NumberOfInstructions;i++){
                          if(pipeline[i][0]==InputProgram[i])
                             pc=i+1;
                      }
@@ -863,21 +870,24 @@ public:
                      branch_flag=0;
                      if(pipeline[i][0].substr(3,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0])){
                        if(flagForwdg==0){
+                            stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
-                            stalls_hazard(i-1);
+                            //stalls_hazard(i-1);
                        }
                        else{
+                             stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                             else
                             fill(i,j,0,0,0,0,0);
                        }
                        clock++;
-                    }
+                    } 
                      else{
+                         stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                         else
@@ -888,12 +898,15 @@ public:
                   if(pipeline[i][0].substr(0,2)=="lw"){
                     if(i!=0 && pipeline[i][0].substr(pipeline[i][0].length()-3,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
+                            stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
+                             //stalls_hazard(i-1);
                         }
                         else{//with forwarding
+                             stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                             else
@@ -902,6 +915,7 @@ public:
                         clock++;
                     }
                     else{
+                         stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                         else
@@ -913,12 +927,15 @@ public:
                 if(pipeline[i][0].substr(0,2)=="sw"){
                     if(i!=0 && pipeline[i][0].substr(pipeline[i][0].length()-3,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
+                             stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,2,0,0);
                             else
                             fill(i,j,0,0,2,0,0);
+                             //stalls_hazard(i-1);
                         }
                         else{//with forwarding
+                            stalls_hazard(i-1);
                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                             else
@@ -927,6 +944,7 @@ public:
                         clock++;
                     }
                     else{
+                         stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1)
                             fill(i,j,1,0,0,0,0);
                         else
@@ -938,31 +956,15 @@ public:
             }
         }
 
-
-        
-
-
-
-
-
-
-        void display(){
+       /* void display(){
            cout<<"Registers:"<<"        "<<"Value:"<<endl;
            cout<<endl;
            for(int i=0;i<32;i++){
                cout<<REG[i]<<"                 "<<register_values[i]<<endl;
            }
-        }
+        }*/
 
-        void execute(){
-            /*
-            for(int i=0;i<100;i++){
-                for(int j=0;j<500;j++){
-                    pipeline[i][j] = "null";
-                }
-            }*/
-
-
+        void execute(int flagforwardg){
             preprocess();
             int mainindex;
             for(int i=1;i<=NumberOfInstructions-1;i++){
@@ -972,30 +974,6 @@ public:
                 }
             }
             programCounter=mainindex+2;
-
-            /*
-            if(mode==1){
-            while(programCounter<=NumberOfInstructions){
-                string current_instruction = readInstruction(InputProgram[programCounter-1]);
-                 cout << "ProgramCounter:" << programCounter << endl;
-                processInstruction(current_instruction);
-                cout<<"MEMORY:"<<endl;
-                for(int i=0;i<1024;i++){
-                    if(MEM[i]!=0){
-                         cout<<MEM[i]<<" ";
-                    }
-                }
-                cout<<endl;
-            }
-            //cout << "ProgramCounter:" << programCounter << endl;
-            cout<<endl<<endl;
-            display();
-            return;
-            }
-            */
-
-            //else{
-                int flag; 
             int pipeRow = 0;
             while(programCounter<=NumberOfInstructions){
                 string current_instruction = readInstruction(InputProgram[programCounter-1]); 
@@ -1004,11 +982,7 @@ public:
                 pipeline[pipeRow][0]=current_instruction;
                 pipeRow++;
             }
-            fillPipeline(pipeRow, flag);
-            cout << "ProgramCounter:" << programCounter << endl;
-            cout<<endl;
-            cout<<endl;
-            display();
+            fillPipeline(pipeRow, flagforwardg);
             cout<<endl;
             cout<<endl;
              cout<<"MEMORY:"<<endl;
@@ -1019,29 +993,13 @@ public:
                 }
                 cout<<endl;
             return;
-            //}
         }
 };
 int main(){
     cout<<"Welcome to Team dynamic MIPS SIMULATOR!!"<<endl;
-    /*int mode;
-    cout<<"Enter mode 1 or 2:      1.Step-bystep execution   2.Final output"<<endl;
-    cin>>mode;*/
-    //mode 2 is changed to nly print the current instruction.
-
-    //mipsSimulator simulator("mipsBubblesort.asm");
-    mipsSimulator simulator("BubbleSort.asm");
-
-
-
-
-    /*
-    cout << "--------------------------";
-    vector<string> instructionss = simulator.InputProgram;
-    for(int i=0; i < instructionss.size(); i++){
-        std::cout << instructionss.at(i) << endl;
-    }
-    cout << "--------------------------";
-    */
-    simulator.execute();
+    int mode;
+    cout<<"Enter mode 1 or 2:      1.Without Forwarding   2.With Forwarding"<<endl;
+    cin>>mode;
+    mipsSimulator simulator("sample.asm");
+    simulator.execute(mode);
 }
