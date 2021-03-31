@@ -1093,14 +1093,6 @@ void stalls_hazard(int ins_row){
         }
 
         void execute(int flag){
-            /*
-            for(int i=0;i<100;i++){
-                for(int j=0;j<500;j++){
-                    pipeline[i][j] = "null";
-                }
-            }*/
-
-
             preprocess();
             //int mainindex;
             for(int i=1;i<=NumberOfInstructions-1;i++){
@@ -1111,28 +1103,6 @@ void stalls_hazard(int ins_row){
             }
             programCounter=mainindex+2;
 
-            /*
-            if(mode==1){
-            while(programCounter<=NumberOfInstructions){
-                string current_instruction = readInstruction(InputProgram[programCounter-1]);
-                 cout << "ProgramCounter:" << programCounter << endl;
-                processInstruction(current_instruction);
-                cout<<"MEMORY:"<<endl;
-                for(int i=0;i<1024;i++){
-                    if(MEM[i]!=0){
-                         cout<<MEM[i]<<" ";
-                    }
-                }
-                cout<<endl;
-            }
-            //cout << "ProgramCounter:" << programCounter << endl;
-            cout<<endl<<endl;
-            display();
-            return;
-            }
-            */
-
-            //else{
             int pipeRow = 0;
             while(programCounter<=NumberOfInstructions){
                 string current_instruction = readInstruction(InputProgram[programCounter-1]); 
@@ -1142,39 +1112,15 @@ void stalls_hazard(int ins_row){
                 pipeRow++;
             }
 
-            for(int i=0; i<pipeRow; i++){
-                for(int j=0; j<500;j++){
-                    cout << pipeline[i][j];
-                }
-                cout << endl;
-            }
-
             fillPipeline(pipeRow, flag);
 
-
-            cout << pipeRow << endl;
-
-            for(int i=0; i<pipeRow; i++){
-                for(int j=1; j<500;j++){
-                    if(pipeline[i][j]=="IF"){
-                        cout << j ;
-                    }
-                    cout << pipeline[i][j] << " ";
-                }
-                cout << endl;
-            }
-
-            cout << pipeRow << endl;
-
-
+           int cnt=0;
             for(int j=1;j<500;j++){
                 if(pipeline[pipeRow-1][j] == "WB"){
-                    cout << "Total number of clock cycles: " << j << endl;
+                    cout << "Total number of clock cycles: " << j << endl<<endl;
+                    cnt=j;
                 }
             }
-
-
-            cout << pipeRow << endl;
 
             string stallInstruction[100];
             int count=0;
@@ -1185,29 +1131,22 @@ void stalls_hazard(int ins_row){
                         count++;
                         stallInstruction[k] = pipeline[i][0];
                     }
-                    /*if( pipeline[i][j]="WB")
-                        break;*/
                 }
                 k++;
             }
+ 
+            cout << "Total number of stalls: " << count <<endl<<endl;
+            float ipc=(float)pipeRow/cnt;
+            cout<<"IPC(Instructions per cycle is) :"<<ipc<<endl<<endl;
 
-            cout << "Total number of stalls: " << count <<endl;
-
-            cout << "List of instructions for which stalls occur: " << endl;
+            cout << "List of instructions for which stalls occur: " << endl<<endl<<endl<<endl;
 
             for(int i=0;i<k;i++){
                 if(stallInstruction[i]!=""){
                     cout << stallInstruction[i] << endl;
                 }
             }
-
-            /*
-            cout << "ProgramCounter:" << programCounter << endl;
-            cout<<endl;
-            cout<<endl;
-            //display();
-            cout<<endl;
-            cout<<endl;*/
+            cout<<endl<<endl<<endl<<endl;
              cout<<"MEMORY:"<<endl;
                 for(int i=0;i<1024;i++){
                     if(MEM[i]!=0){
@@ -1216,21 +1155,14 @@ void stalls_hazard(int ins_row){
                 }
                 cout<<endl;
             return;
-            //}
         }
 };
 int main(){
     cout<<"Welcome to Team dynamic MIPS SIMULATOR!!"<<endl;
-    /*int mode;
-    cout<<"Enter mode 1 or 2:      1.Step-bystep execution   2.Final output"<<endl;
-    cin>>mode;*/
-    //mode 2 is changed to nly print the current instruction.
-
     mipsSimulator simulator("mipsBubblesort.asm");
-    //mipsSimulator simulator("BubbleSort.asm");
 
     int flagFrwd;
-    cout << "enter 1 for forwarding and 0 for no forwarding" << endl;
+    cout << "ENTER 1 for Forwarding and 0 for NO forwarding" << endl;
     cin >> flagFrwd;
     simulator.execute(flagFrwd);
 }
