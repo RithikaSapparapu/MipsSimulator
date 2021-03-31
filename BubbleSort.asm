@@ -1,9 +1,9 @@
 .data
-    array: .word 5, 3, 2, 4, 1, 9, 7
+    array: .word 9, 3, 1    
 .text
 .globl main
 main:
-    addi $t6, $zero, 1
+    addi $t6, $zero, 1  
     addi $t5, $zero, 1
     j bigwhile
 while:
@@ -30,3 +30,4 @@ bigwhile:
     j while
 exit:
     jr $ra
+
