@@ -81,9 +81,7 @@ public:
                 if(InputProgram[k]=="main:")
                 mainindex=k;
             }
-            cout<<mainindex<<endl;
         int p_count=mainindex+1;
-        cout<<p_count;
         for(int k=p_count;k<InputProgram.size();k++){
             string current_instrucn=readInstruction(InputProgram[k]);
             Input_ins.push_back(current_instrucn);
@@ -1139,14 +1137,14 @@ void stalls_hazard(int ins_row){
             float ipc=(float)pipeRow/cnt;
             cout<<"IPC(Instructions per cycle is) :"<<ipc<<endl<<endl;
 
-            cout << "List of instructions for which stalls occur: " << endl<<endl<<endl<<endl;
+            cout << "List of instructions for which stalls occur: " << endl<<endl<<endl;
 
             for(int i=0;i<k;i++){
                 if(stallInstruction[i]!=""){
                     cout << stallInstruction[i] << endl;
                 }
             }
-            cout<<endl<<endl<<endl<<endl;
+            cout<<endl<<endl;
              cout<<"MEMORY:"<<endl;
                 for(int i=0;i<1024;i++){
                     if(MEM[i]!=0){
