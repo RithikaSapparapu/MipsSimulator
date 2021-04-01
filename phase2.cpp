@@ -1157,7 +1157,7 @@ void stalls_hazard(int ins_row){
 };
 int main(){
     cout<<"Welcome to Team dynamic MIPS SIMULATOR!!"<<endl;
-    mipsSimulator simulator("mipsBubblesort.asm");
+    mipsSimulator simulator("BubbleSort.asm");
 
     int flagFrwd;
     cout << "ENTER 1 for Forwarding and 0 for NO forwarding" << endl;
