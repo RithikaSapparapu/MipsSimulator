@@ -11,11 +11,14 @@ string pipeline[500][1000];
 class mipsSimulator{
 public:
     int MEM[1024]={0};
+    int miss_arr[1024]={0};
        int programCounter;
        int NumberOfInstructions;
        int branch_flag;
-       bool miss=true;
+       int miss=0;
        int countmiss=0;
+       int L1_filled=0,L2_filled=0;
+      int  numofblocks_l1,numOfints_l1,numOfSets_l1, offset_l1,index_l1,tag_l1 ;
        int MaxLength;//10000
        vector<string> InputProgram; //to store the input program
        vector<string>Input_ins;
@@ -30,36 +33,66 @@ public:
         };
         vector<struct Memoryword>Mem;
         vector<struct Label>labeltable;
+        struct Block{
+            int arrOfints[1024];
+            Block(){
+                for(int i=0;i<1024;i++){
+                    arrOfints[i]=0;
+                }
+            }
+        };
+        
 
-        int logValue(int t){
-            //function - returns log to the base 2
-            return t;
-        }
+        struct cache{
+            //int numofblocks;
+            string tag[1024];
+            int dirty[1024];
+             Block blk_arr[1024];
+            int counter[1024];
+            //string set[1024];
+            cache(){
+                for(int i=0;i<1024;i++){
+                    dirty[i]=0;
+                    counter[i]=0;
+                }
+                for(int j=0;j<1024;j++){
+                    //set[j]="NULL";
+                     tag[j]="NULL";
+
+                }
+            }
+        };
+        
          
-        mipsSimulator(string fileName, int cachesize ,int blocksize, int associativity,){//in terms of bytes
+        mipsSimulator(string fileName,int l1_cachesize ,int l1_blocksize, int l1_assoc,int l1_time,int l2_cachesize ,int l2_blocksize, int l2_assoc,int l2_time,int mem_time){//in terms of bytes
         programCounter=0;
         NumberOfInstructions=0;
         MaxLength=10000;
         branch_flag=0;
         //fix address to 8 bits
-        int numofblocks = cachesize/blocksize;
-        int numOfints = blocksize/4;
-        int numOfSets = numofblocks/associativity;
+    int  numofblocks_l1,numOfints_l1,numOfSets_l1, offset_l1,index_l1,tag_l1,time_l1;
+    int  numofblocks_l2,numOfints_l2,numOfSets_l2, offset_l2,index_l2,tag_l2,time_l2;
+    int mem_time;
+      numofblocks_l1 = l1_cachesize/l1_blocksize;
+        numOfints_l1 = l1_blocksize/4;
+        numOfSets_l1 = numofblocks_l1/l1_assoc;
 
-        int offset = logValue(numofblocks);
-        int index = logValue(numOfSets);
-        int tag = 8 - index - offset;
+        offset_l1 = logValue(numofblocks_l1);
+        index_l1 = logValue(numOfSets_l1);
+        tag_l1 = 8 - index_l1 - offset_l1;
 
-        struct Block{
-            int arrOfints[numOfints];
-        };
+         numofblocks_l2= l2_cachesize/l2_blocksize;
+        numOfints_l2 = l2_blocksize/4;
+        numOfSets_l2 = numofblocks_l2/l2_assoc;
 
-        struct cacheL1{
-            string tag[numofblocks];
-            struct Block cache1[numofblocks];
-            int counter[numofblocks];
-            string set[numofblocks];
-        };
+        offset_l2 = logValue(numofblocks_l2);
+        index_l2 = logValue(numOfSets_l2);
+        tag_l2 = 8 - index_l2 - offset_l2; 
+
+       
+
+        
+        
 
         ifstream InputFile;
         InputFile.open(fileName.c_str(),ios::in); //open file
@@ -79,6 +112,127 @@ public:
         }
         InputFile.close();
         }
+        struct cache cac_l1;
+        struct cache cac_l2;
+        string decToBinary(int n,int size)
+        {
+          string temp="";
+         for (int i = size-1; i >= 0; i--) {
+               int k = n >> i;
+             if (k & 1)
+                temp=temp+"1";
+              else
+                temp=temp+"0";
+          }
+          return temp;
+       }
+       int binaryToDecimal(string n)
+     {
+         string num = n;
+        int dec_value = 0;
+ 
+    // Initializing base value to 1, i.e 2^0
+        int base = 1;
+ 
+       int len = num.length();
+      for (int i = len - 1; i >= 0; i--) {
+        if (num[i] == '1')
+            dec_value += base;
+        base = base * 2;
+      }
+ 
+      return dec_value;
+  }
+       int logValue(int val){
+            //function - returns log to the base 2
+            int t=log2(val);
+            return t;
+        }
+        int closestMultiple(int n, int x)
+         {   
+              if(x>n)
+                return 0;
+  
+             n = n + x/2;
+             n = n - (n%x);
+           return n;
+         }
+        
+         int getMin(int arr[], int n)
+        {
+             int res = arr[0];
+             int index=0;
+             for (int i = 1; i < n; i++){
+                  if(res>arr[i]){
+                      res=arr[i];
+                  }
+             }  
+             for(int i=0;i<n;i++){
+                 if(res==arr[i]){
+                 index=i;
+                 break;
+                 }
+             }
+             return index;
+         }
+        int search(string addr,int offs,int val){
+            L1_filled=0;//not empty
+            for(int k=0;k<numofblocks_l1;k++){
+               if(cac_l1.tag[k]=="NULL")
+               L1_filled=1;
+            }
+            int i;
+            for(i=0;i<numofblocks_l1;i++){
+                if(cac_l1.tag[i]==addr){
+                    for(int j=0;j<numOfints_l1;j++){
+                        if(cac_l1.blk_arr[i].arrOfints[j]==MEM[(offs+val/4)]){
+                            cac_l1.counter[i]+=1;
+                            miss=0;
+                            break;
+                        }
+                    }
+                }
+            }
+            if(i==numofblocks_l1 ){
+                miss=1;
+                countmiss++;
+              if(L1_filled==1){
+               for(int m=0;m<numofblocks_l1;m++){
+                   if(cac_l1.tag[m]=="NULL"){
+                       int dec=binaryToDecimal(addr);
+                       int closest_addr=closestMultiple(dec,numOfints_l1);
+                       cac_l1.tag[m]=decToBinary(closest_addr,8);
+                       for(int k=0;k<numOfints_l1;k++){
+                           cac_l1.blk_arr[m].arrOfints[k]=MEM[closest_addr];
+                           closest_addr++;
+                       }
+                       break;
+                   }
+               }
+              }
+              else{
+                  //have to apply LRU
+                  int min=getMin(cac_l1.counter,numofblocks_l1);
+                  cac_l1.tag[min]=addr;
+                   int dec=binaryToDecimal(addr);
+                       int closest_addr=closestMultiple(dec,numOfints_l1);
+                       for(int k=0;k<numOfints_l1;k++){
+                           cac_l1.blk_arr[min].arrOfints[k]=MEM[closest_addr];
+                           closest_addr++;
+                       }
+
+              }
+
+               
+             }
+             return miss;
+
+        }
+        void writeback(string addr,int offs,int val){
+              
+
+        }
+
         string readInstruction(string str){
             if(str.find("#")!=-1){ //remove comments
                     str=str.substr(0,str.find("#"));
@@ -242,7 +396,7 @@ public:
 
 
         void processInstruction(string current_instruction){
-            miss = true;
+            miss=0;
             if(current_instruction.substr(0,3)=="add" && current_instruction.substr(3,1)!="i"){
                 int reg_store[3]={-1};
                 for(int i=0;i<32;i++){
@@ -437,6 +591,10 @@ public:
                 programCounter++;
 
                 //cachesearch() - updates miss variable by searching in cache(includes splitting the adress into tag, offset,index)
+
+                string temp_addr=decToBinary((offs+value)/4,8);
+                
+
                 if(miss==true){
                     if(/*l1 and l2 are full*/ ){
                         //do LRU
@@ -1192,7 +1350,7 @@ void stalls_hazard(int ins_row){
 int main(){
     cout<<"Welcome to Team dynamic MIPS SIMULATOR!!"<<endl;
     //mipsSimulator simulator("BubbleSort.asm");
-    mipsSimulator simulator("mipsBubblesort.asm");
+    mipsSimulator simulator("BubbleSortlite.asm");
 
 
     int flagFrwd;
