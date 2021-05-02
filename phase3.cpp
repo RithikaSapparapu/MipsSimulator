@@ -116,26 +116,51 @@ class mipsSimulator{
             return false;
         }
 
-        void L2toL1(int addrs){
-            //increment counters
-            int i,j;
-            for(i=0;i<numblocks2;i++){
-                if(tag2[i]==addrs)
+        int minimum(int arr[], int n){
+            int min=arr[0];
+            for(int i=0; i<n; i++){
+                if(arr[i]<=min)
+                    min=arr[i];
+            }
+            int j;
+            for(j=0; j<n; j++){
+                if(arr[j]==min)
                     break;
             }
+            return j;
+        }
+
+        void incrementcounter1(int adrs){
+            for(int i=0;i<numblocks1;i++){
+                if(tag1[i]==adrs){
+                    counter1[i]++;
+                    break;
+                }
+            }
+        }
+
+        void L2toL1(int addrs){
+            int i,j,count;
+            for(i=0;i<numblocks2;i++){
+                if(tag2[i]==nearest(addrs))
+                    break;
+            }
+            int k1,k2;
             for(j=0;j<numblocks1;j++){
                 if(tag1[j]==-1){
                     tag1[j]=tag2[i];
                     tag2[i]=-1;
 
-                    int k1=2*j;
-                    int k2=2*i;
+                    k1=blockInts1*j;
+                    k2=blockInts2*i;
                     for(int k=0; k<blockInts1; k++){
                         cache1[k1]=cache2[k2];
                         cache2[k2]=0;
                         k1++;
                         k2++;
                     }
+                    counter2[i]=0;
+                    counter1[j]=1;
                     break;
                 }
             }
@@ -144,15 +169,49 @@ class mipsSimulator{
                 //check with the counter in cache1, the least one will be pushed 
                 //to cache2(if full, we again apply lru for cache2) and then we put 
                 // new one in the place that has been emptied.
+                int tempcount1, temptag1, tempInts1[blockInts1];
+                int minIndex = minimum(counter1[], numblocks1);
+                j=minIndex;
+                k1=blockInts1*j;
+                k2=blockInts2*i;
+                //copy the contents of the block that is being kicked out of L1
+                //as these are to be put in L2
+                temptag1 = tag1[j];
+                tempcount1 = counter1[j];
+                for(int m=0; m<blockInts1; m++){
+                    tempInts1[m]= cache1[k1];
+                    k1++;
+                }
+                //copy from L2 to L1
+                tag1[j]=tag2[i];
+                k1=blockInts1*j;
+                k2=blockInts2*i;
+                for(int k=0; k<blockInts1; k++){
+                    cache1[k1]=cache2[k2];
+                    cache2[k2]=0;
+                    k1++;
+                    k2++;
+                }
+                counter1[j]=counter2[i];
+                counter1[j]++;
+                //copy back the contents of temp into the block that was emptied in L2
+                tag2[i] = temptag1;
+                counter2[i] = tempcount1;
+                k2=blockInts2*i;
+                for(int m=0; m<blockInts2; m++){
+                    cache2[k2] = tempInts1[m];
+                    k2++;
+                }
             }
         }
 
         void memtoL1(int addrs){
-            int j;
+            int j,k1,k2;
             for(j=0;j<numblocks1,j++){
                 if(tag1[j]==-1){
-                    int k1= 2*j;
+                    k1 = blockInts1*j;
                     tag1[j]=nearest(addrs);
+                    counter1[j]=1;
                     for(int k=0; k<blockInts1; k++){
                         cache1[k1]=MEM[addrs];
                         k1++;
@@ -161,9 +220,74 @@ class mipsSimulator{
                     break;
                 }
             }
-            if(j==numblocks1){
+            int i; //i for cache L2
+            if(j==numblocks1){  //if L1 is full
                 //lru
+                int minIndex1 = minimum(counter1[], numblocks1);
+                int tempcount1, temptag1, tempInts1[blockInts1];
+                j=minIndex1;
+                k1=blockInts1*j;
+                //copy the contents of the block that is being kicked out of L1
+                //as these are to be put in L2
+                temptag1 = tag1[j];
+                tempcount1 = counter1[j];
+                for(int m=0; m<blockInts1; m++){
+                    tempInts1[m]= cache1[k1];
+                    k1++;
+                }
+                //bring new block from them memory and put it cache
+                tag1[j]=nearest(addrs);
+                counter1[j]=1;
+                for(int k=0; k<blockInts1; k++){
+                    cache1[k1]=MEM[addrs];
+                    k1++;
+                    addrs++;
+                }
+                //copy back contents in temp to L2
+                for(i=0;i<numblocks2;i++){
+                    if(tag2[i]==-1){
+                        tag2[i] = temptag1;
+                        counter2[i] = tempcount1;
+                        k2=blockInts2*i;
+                        for(int m=0; m<blockInts2; m++){
+                            cache2[k2] = tempInts1[m];
+                            k2++;
+                        }
+                        break;
+                    }
+                }
+                if(i==numblocks2){  //if L2 is full, apply lru again
+                    int minIndex2 = minimum(counter2[], numblocks2);
+                    i=minIndex2;
+                    tag2[i] = temptag1;
+                    counter2[i] = tempcount1;
+                    k2=blockInts2*i;
+                    for(int m=0; m<blockInts2; m++){
+                        cache2[k2] = tempInts1[m];
+                        k2++;
+                    }
+                }
             }
+        }
+
+        void updateInL1(int addrs,int val){
+            int j;
+            for(j=0;j<numblocks1;j++){
+                if(tag1[j]==nearest(addrs))
+                    break;
+            }
+            int k1 = blockInts1*j;
+            cache1[k1 + (addrs-nearest(addrs))] = val;
+        }
+
+        void updateInL2(int addrs,int val){
+            int i;
+            for(i=0;i<numblocks2;i++){
+                if(tag1[i]==nearest(addrs))
+                    break;
+            }
+            int k1 = blockInts2*i;
+            cache2[k1 + (addrs-nearest(addrs))] = val;
         }
 
         string readInstruction(string str){
@@ -515,7 +639,6 @@ class mipsSimulator{
                 programCounter++;
 
                 //----------------------------------------
-
                 int adrs;
                 adrs = (offs + value)/4;
                 if(search1(adrs) == true){//hit in L1
@@ -523,21 +646,14 @@ class mipsSimulator{
                     incrementcounter1(adrs);
                 }
                 else if(search2(adrs) == true){//hit in L2 but was a miss in L1
-                    miss=1;
-                    //incrementcounter2(adrs) will not happen since L2 is emptied and copied to L1
-                    
+                    miss=1; 
                     L2toL1(adrs); 
-                    //setcounter2tozero(addrs) should happen
-                    //incrementcounter1(adrs) should happen since a new value is entered into L1
                 }
                 else{
                     miss=2;
                     memtoL1(adrs);
-                    //incrementcounter1(adrs) 
                 }
-
                 //----------------------------------------
-
                 return;
              }
 
@@ -560,6 +676,26 @@ class mipsSimulator{
                 value = register_values[reg_store[1]];
                 MEM[(offs + value)/4]=register_values[reg_store[0]];
                 programCounter++;
+
+                //---------------------------------------
+                int adrs, value1;
+                value1 = register_values[reg_store[0]];
+                adrs = (offs + value)/4;
+                if(search1(adrs) == true){//hit in L1
+                    miss=0;
+                    incrementcounter1(adrs);
+                    updateInL1(adrs,value1);
+                }
+                else if(search2(adrs) == true){//hit in L2 but was a miss in L1
+                    miss=1; 
+                    L2toL1(adrs);
+                    updateInL2(adrs,value1); 
+                }
+                else{
+                    miss=2;
+                    memtoL1(adrs);
+                }
+                //----------------------------------------
                 return;
             }
 
