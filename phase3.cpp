@@ -11,6 +11,7 @@ string pipeline[500][1000];
 class mipsSimulator{
     public:
         int MEM[1024]={0};
+        int miss_arr[500]={-1};
         //------------------------------------
         int cache1[1024]={0};
         int tag1[1024]={-1};
@@ -170,7 +171,7 @@ class mipsSimulator{
                 //to cache2(if full, we again apply lru for cache2) and then we put 
                 // new one in the place that has been emptied.
                 int tempcount1, temptag1, tempInts1[blockInts1];
-                int minIndex = minimum(counter1[], numblocks1);
+                int minIndex = minimum(counter1, numblocks1);
                 j=minIndex;
                 k1=blockInts1*j;
                 k2=blockInts2*i;
@@ -207,7 +208,7 @@ class mipsSimulator{
 
         void memtoL1(int addrs){
             int j,k1,k2;
-            for(j=0;j<numblocks1,j++){
+            for(j=0;j<numblocks1;j++){
                 if(tag1[j]==-1){
                     k1 = blockInts1*j;
                     tag1[j]=nearest(addrs);
@@ -223,7 +224,7 @@ class mipsSimulator{
             int i; //i for cache L2
             if(j==numblocks1){  //if L1 is full
                 //lru
-                int minIndex1 = minimum(counter1[], numblocks1);
+                int minIndex1 = minimum(counter1, numblocks1);
                 int tempcount1, temptag1, tempInts1[blockInts1];
                 j=minIndex1;
                 k1=blockInts1*j;
@@ -257,7 +258,7 @@ class mipsSimulator{
                     }
                 }
                 if(i==numblocks2){  //if L2 is full, apply lru again
-                    int minIndex2 = minimum(counter2[], numblocks2);
+                    int minIndex2 = minimum(counter2, numblocks2);
                     i=minIndex2;
                     tag2[i] = temptag1;
                     counter2[i] = tempcount1;
@@ -798,8 +799,36 @@ class mipsSimulator{
             while(pipeline[x][y]=="stall"){
                 y++;
             }
+            if(pipeline[x][0].substr(0,2)=="lw" || pipeline[x][0].substr(0,2)=="sw"){
+                if(miss_arr[x]==0){//miss=?
+                    int temp_time=accessLatency1;
+                    while(temp_time!=0){
+                        pipeline[x][y]="MEM";
+                        y++;
+                        temp_time--;
+                    }
+                }
+                else if(miss_arr[x]==1){
+                    int temp_time=accessLatency1+accessLatency2;
+                    while(temp_time!=0){
+                        pipeline[x][y]="MEM";
+                        y++;
+                        temp_time--;
+                    }
+                }
+                else{
+                    int temp_time=accessLatency1+accessLatency2+memTime;
+                    while(temp_time!=0){
+                        pipeline[x][y]="MEM";
+                        y++;
+                        temp_time--;
+                    }
+                }
+            }
+            else{
             pipeline[x][y]="MEM";
             y++;
+            }
             while(wb!=0){
                 if(pipeline[x][y]=="stall"){
                     y++;
@@ -842,7 +871,7 @@ class mipsSimulator{
                 return ins.substr(2,2);
             }
 
-            return "nulll";
+            return "null";
             //if ..... other functions
         }
 
@@ -853,6 +882,26 @@ class mipsSimulator{
             }
             return flag;
         }
+      
+       int memory_hazard(int ins_row){
+           int result=0;
+           if(pipeline[ins_row][0].substr(0,2)=="lw"||pipeline[ins_row][0].substr(0,2)=="sw"){
+               int temp_miss=miss_arr[ins_row];
+               if(temp_miss==0){
+                  result=accessLatency1-1;
+               }
+               else if(temp_miss==1){
+                   result=accessLatency1+accessLatency2-1;
+               }
+               else{
+                   result=accessLatency1+accessLatency2+memTime-1;
+               }
+               return result;
+           }
+           else{
+               return result;
+           }
+       }
         
         void stalls_hazard(int ins_row){
             int IF,ID,EX,MEM;
@@ -907,23 +956,47 @@ class mipsSimulator{
                 j=clock1;
 
                 if(pipeline[i][0].substr(0,4)=="addi"){
+                     //no of cycles-1 if it is a lw or sw
                     if(i!=0 && pipeline[i][0].substr(6,2) == hazard(pipeline[i-1][0])){
+                       //if its a lw or sw..then it returns time 
+                       int res=memory_hazard(i-1);
                          if(flagForwdg==0){//no forwarding
                             stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                            fill(i,j,1,0,2,0,0);
+                                if(res!=0){//suppose 4 cycles res=3
+                                   fill(i,j,1,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,2,0,0);
+                                }
                            }
                             else{
-                            fill(i,j,0,0,2,0,0); 
+                            if(res!=-1){
+                                   fill(i,j,0,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,2,0,0);
+                                }
                             }     
                         }
+                        //doubtful in case of forwarding
                         else{//with forwarding
                             stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                            fill(i,j,1,0,0,0,0);
+                             if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
                             }
                             else{
-                            fill(i,j,0,0,0,0,0);
+                             if(res!=-1){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                             }
                         }
                     }
@@ -931,25 +1004,47 @@ class mipsSimulator{
                         fill(i,j,0,0,0,0,0);
                     }
                     else{   //i!=0 and no hazard in previous instruction
+                    int res=memory_hazard(i-1);
                          stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                            fill(i,j,1,0,0,0,0);
+                            if(res!=-1){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,res,0,0);
+                                }
                         }
                         else{
-                            fill(i,j,0,0,0,0,0);
+                             if(res!=-1){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,res,0,0);
+                                }
                         }
                        
                     }
                 }
                 if(pipeline[i][0].substr(0,3)=="add" && pipeline[i][0].substr(3,1)!="i"){
+                    int res=memory_hazard(i-1);
                     if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
                          stalls_hazard(i-1);
                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                            fill(i,j,1,0,2,0,0);
+                            if(res!=0){
+                                   fill(i,j,1,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,2,0,0);
+                                }
                             }
                             else{
-                              fill(i,j,0,0,2,0,0);
+                                if(res!=0){
+                                   fill(i,j,0,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,2,0,0);
+                                }
                             }
                            
                             
@@ -957,11 +1052,21 @@ class mipsSimulator{
                         else{//with forwarding
                          stalls_hazard(i-1);
                              if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                  fill(i,j,1,0,0,0,0);
+                                   if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
                              }
                            
                             else{
-                                 fill(i,j,0,0,0,0,0);
+                                if(res!=-1){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                             }
                            
                         }
@@ -970,56 +1075,99 @@ class mipsSimulator{
                     else{
                         stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                             fill(i,j,1,0,0,0,0);
+                            // fill(i,j,1,0,0,0,0);
+                             if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
                          }
                             
                         else{
-                            fill(i,j,0,0,0,0,0);
+                            //fill(i,j,0,0,0,0,0);
+                            if(res!=0){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                         }
                        
                     }
                 }
 
                 if(pipeline[i][0].substr(0,3)=="sub"){
+                    int res=memory_hazard(i-1);
                     if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
                          stalls_hazard(i-1);
-                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                 fill(i,j,1,0,2,0,0);
-                             }
-                            
-                            else{
-                                fill(i,j,0,0,2,0,0);
+                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                            if(res!=0){
+                                   fill(i,j,1,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,2,0,0);
+                                }
                             }
-                            
-                            //stalls_hazard(i-1);
+                            else{
+                                if(res!=0){
+                                   fill(i,j,0,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,2,0,0);
+                                }
+                            }
                         }
                         else{//with forwarding
-                             stalls_hazard(i-1);
+                            stalls_hazard(i-1);
                              if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                 fill(i,j,1,0,0,0,0);
+                                 if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
                              }
-                            
+                           
                             else{
-                                 fill(i,j,0,0,0,0,0);
+                                if(res!=-1){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                             }
                            
                         }
                       
                     }
                     else{
-                        stalls_hazard(i-1);
-                       if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                           fill(i,j,1,0,0,0,0);
-                       }
+                         stalls_hazard(i-1);
+                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                            // fill(i,j,1,0,0,0,0);
+                             if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                         }
                             
                         else{
-                        fill(i,j,0,0,0,0,0);
+                            //fill(i,j,0,0,0,0,0);
+                            if(res!=0){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                         }
                     }
                 }
 
                 if(pipeline[i][0].substr(0,3)=="mul"){
+                    int res=memory_hazard(i-1);
                     if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
                          stalls_hazard(i-1);
@@ -1032,101 +1180,196 @@ class mipsSimulator{
                             }
                         }
                         else{//with forwarding
-                            stalls_hazard(i-1);
-                           if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                fill(i,j,1,0,0,0,0);
-                           }
+                           stalls_hazard(i-1);
+                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                                 if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                             }
                            
                             else{
-                              fill(i,j,0,0,0,0,0);
-                            }  
+                                if(res!=-1){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
+                            }
+                           
                         } 
                     }
                     else{
                          stalls_hazard(i-1);
-                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1){  
-                              fill(i,j,1,0,0,0,0);
-                        }
-                           
+                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                            // fill(i,j,1,0,0,0,0);
+                             if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                         }
+                            
                         else{
-                          fill(i,j,0,0,0,0,0);
+                            //fill(i,j,0,0,0,0,0);
+                            if(res!=0){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                         }
                         
                     }
                 }
 
                 if(pipeline[i][0].substr(0,3)=="div"){
+                    int res=memory_hazard(i-1);
                     if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
-                         stalls_hazard(i-1);
-                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                fill(i,j,1,0,2,0,0);
-                            }
-                            
-                            else{
-                                fill(i,j,0,0,2,0,0);
-                            }
-                        }
-                        else{//with forwarding
-                            stalls_hazard(i-1);
-                           if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                fill(i,j,1,0,0,0,0);
-                           }
+                          stalls_hazard(i-1);
+                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                                 if(res!=0){
+                                   fill(i,j,1,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,2,0,0);
+                                }
+                             }
                            
                             else{
-                            fill(i,j,0,0,0,0,0);
+                                if(res!=-1){
+                                   fill(i,j,0,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,2,0,0);
+                                }
                             }
-                        }   
-                    }
+                           
+                        }
+                        else{//with forwarding
+                             stalls_hazard(i-1);
+                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                                 if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                             }
+                           
+                            else{
+                                if(res!=-1){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
+                            }
+                             
+                      }
+                }
                     else{
                         stalls_hazard(i-1);
-                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1){  
-                             fill(i,j,1,0,0,0,0);
-                        }         
+                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                            // fill(i,j,1,0,0,0,0);
+                             if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                         }
+                            
                         else{
-                             fill(i,j,0,0,0,0,0);
+                            //fill(i,j,0,0,0,0,0);
+                            if(res!=0){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                         }
                        
                     }
                 }
 
                 if(pipeline[i][0].substr(0,3)=="slt"){
+                    int res=memory_hazard(i-1);
                    if(pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(7,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
-                         stalls_hazard(i-1);
-                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                 fill(i,j,1,0,2,0,0);
-                            }
-                            
+                            stalls_hazard(i-1);
+                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                                 if(res!=0){
+                                   fill(i,j,1,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,2,0,0);
+                                }
+                             }
+                           
                             else{
-                                fill(i,j,0,0,2,0,0);
+                                if(res!=-1){
+                                   fill(i,j,0,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,2,0,0);
+                                }
                             }
                         }
                         else{//with forwarding
-                            stalls_hazard(i-1);
-                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                fill(i,j,1,0,0,0,0);
-                           }  
+                           stalls_hazard(i-1);
+                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                                 if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                             }
+                           
                             else{
-                            fill(i,j,0,0,0,0,0);
+                                if(res!=-1){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                             }
                         }
                        
                     }
                     else{
-                         stalls_hazard(i-1);
-                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1){   
-                             fill(i,j,1,0,0,0,0);
-                        }
+                        stalls_hazard(i-1);
+                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                            // fill(i,j,1,0,0,0,0);
+                             if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                         }
                             
                         else{
-                             fill(i,j,0,0,0,0,0);
+                            //fill(i,j,0,0,0,0,0);
+                            if(res!=0){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                         }
+                       
                        
                     }
                 }
                 if(pipeline[i][0].substr(0,3)=="beq"){
                      int pc;
+                     int res=memory_hazard(i-1);
                      branch_flag=0;
                      for(int j=0;j<Input_ins.size();j++){
                         if(pipeline[i][0]==Input_ins[j]){
@@ -1140,37 +1383,69 @@ class mipsSimulator{
                      branch_flag=0;
                     if(pipeline[i][0].substr(3,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
-                         stalls_hazard(i-1);
-                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                 fill(i,j,1,0,2,0,0);
-                            }
-                            
+                            stalls_hazard(i-1);
+                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                                 if(res!=0){
+                                   fill(i,j,1,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,2,0,0);
+                                }
+                             }
+                           
                             else{
-                            fill(i,j,0,0,2,0,0);
-                            //stalls_hazard(i-1);
+                                if(res!=-1){
+                                   fill(i,j,0,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,2,0,0);
+                                }
                             }
                         }
                         else{//with forwarding
                             stalls_hazard(i-1);
-                           if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                fill(i,j,1,0,0,0,0);
-                           }
+                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                                 if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                             }
                            
                             else{
-                            fill(i,j,0,0,0,0,0);
+                                if(res!=-1){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                             }
                         }
                        
                     }
                     else{
-                         stalls_hazard(i-1);
-                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1){  
-                              fill(i,j,1,0,0,0,0);
-                        }
-                           
+                        stalls_hazard(i-1);
+                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                            // fill(i,j,1,0,0,0,0);
+                             if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                         }
+                            
                         else{
-                          fill(i,j,0,0,0,0,0);
+                            //fill(i,j,0,0,0,0,0);
+                            if(res!=0){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                         }
+                        
                         
                     }
                     
@@ -1178,6 +1453,7 @@ class mipsSimulator{
                 }
                  if(pipeline[i][0].substr(0,3)=="bne"){
                     int pc;
+                    int res=memory_hazard(i-1);
                      branch_flag=0;
                      for(int j=0;j<Input_ins.size();j++){
                         if(pipeline[i][0]==Input_ins[j])
@@ -1189,35 +1465,69 @@ class mipsSimulator{
                      branch_flag=0;
                      if(pipeline[i][0].substr(3,2) == hazard(pipeline[i-1][0]) || pipeline[i][0].substr(5,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
-                         stalls_hazard(i-1);
-                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                 fill(i,j,1,0,2,0,0);
-                            }
-                            
+                           stalls_hazard(i-1);
+                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                                 if(res!=0){
+                                   fill(i,j,1,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,2,0,0);
+                                }
+                             }
+                           
                             else{
-                            fill(i,j,0,0,2,0,0);
+                                if(res!=-1){
+                                   fill(i,j,0,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,2,0,0);
+                                }
                             }
                         }
                         else{//with forwarding
-                            stalls_hazard(i-1);
-                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                fill(i,j,1,0,0,0,0);
-                           }
+                           stalls_hazard(i-1);
+                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                                 if(res!=0){
+                                   fill(i,j,1,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,2,0,0);
+                                }
+                             }
+                           
                             else{
-                            fill(i,j,0,0,0,0,0);
+                                if(res!=-1){
+                                   fill(i,j,0,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,2,0,0);
+                                }
                             }
                         }
                        
                     }
                     else{
-                         stalls_hazard(i-1);
-                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1){  
-                            fill(i,j,1,0,0,0,0);
-                        }
-                           
+                        stalls_hazard(i-1);
+                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                            // fill(i,j,1,0,0,0,0);
+                             if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                         }
+                            
                         else{
-                            fill(i,j,0,0,0,0,0);
+                            //fill(i,j,0,0,0,0,0);
+                            if(res!=0){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                         }
+                        
                         
                     }
                      
@@ -1234,97 +1544,213 @@ class mipsSimulator{
                      branch_flag=1;
                      else
                      branch_flag=0;
-                     
+                     int res=memory_hazard(i-1);
                     stalls_hazard(i-1);
                     if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                        fill(i,j,1,0,0,0,0);
+                        //fill(i,j,1,0,0,0,0);
+                         if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+
                     }
                     else{
-                        fill(i,j,0,0,0,0,0);
+                        //fill(i,j,0,0,0,0,0);
+                         if(res!=0){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                     }
                 }
                   if(pipeline[i][0].substr(0,2)=="lw"){
+                      int res=memory_hazard(i-1);
                     if(i!=0 && pipeline[i][0].substr(pipeline[i][0].length()-3,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
                             stalls_hazard(i-1);
-                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                fill(i,j,1,0,2,0,0);
-                            }
+                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                                 if(res!=0){
+                                   fill(i,j,1,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,2,0,0);
+                                }
+                             }
+                           
                             else{
-                                fill(i,j,0,0,2,0,0);
+                                if(res!=-1){
+                                   fill(i,j,0,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,2,0,0);
+                                }
                             }
                         }
                         else{//with forwarding
-                            stalls_hazard(i-1);
-                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                fill(i,j,1,0,0,0,0);
-                            }
+                              stalls_hazard(i-1);
+                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                                 if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                             }
+                           
                             else{
-                                fill(i,j,0,0,0,0,0);
-                            }  
+                                if(res!=-1){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
+                            }
                         }
                     }
                     else{
-                        stalls_hazard(i-1);
+                       stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                            fill(i,j,1,0,0,0,0);
-                        }
+                            // fill(i,j,1,0,0,0,0);
+                             if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                         }
+                            
                         else{
-                            fill(i,j,0,0,0,0,0);
+                            //fill(i,j,0,0,0,0,0);
+                            if(res!=0){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                         }
                     }
                 }
 
                 if(pipeline[i][0].substr(0,2)=="sw"){
+                    int res=memory_hazard(i-1);
                     if(i!=0 && pipeline[i][0].substr(pipeline[i][0].length()-3,2) == hazard(pipeline[i-1][0])){
                         if(flagForwdg==0){//no forwarding
                             stalls_hazard(i-1);
-                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                fill(i,j,1,0,2,0,0);
-                            }
+                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                                 if(res!=0){
+                                   fill(i,j,1,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,2,0,0);
+                                }
+                             }
+                           
                             else{
-                                fill(i,j,0,0,2,0,0);
+                                if(res!=-1){
+                                   fill(i,j,0,0,res+2,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,2,0,0);
+                                }
                             }
                         }
                         else{//with forwarding
-                            stalls_hazard(i-1);
-                            if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                                fill(i,j,1,0,0,0,0);
-                            }
+                           stalls_hazard(i-1);
+                             if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                                 if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                             }
+                           
                             else{
-                                fill(i,j,0,0,0,0,0);
-                            }  
+                                if(res!=-1){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
+                            }
                         }
                     }
                     else{
                         stalls_hazard(i-1);
                         if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                            fill(i,j,1,0,0,0,0);
-                        }
+                            // fill(i,j,1,0,0,0,0);
+                             if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+                         }
+                            
                         else{
-                            fill(i,j,0,0,0,0,0);
+                            //fill(i,j,0,0,0,0,0);
+                            if(res!=0){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                         }
+                       
+                       
                     }
                 }
 
 
                 if(pipeline[i][0].substr(0,2)=="la"){   //data and structural hazards not possible in la
-                        stalls_hazard(i-1);
-                        if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                            fill(i,j,1,0,0,0,0);
-                        }
-                        else{
-                            fill(i,j,0,0,0,0,0);
-                        }
-                }
-
-                if(pipeline[i][0].substr(0,2)=="jr"){   //data and structural hazards not possible in jr
+                         int res=memory_hazard(i-1);
                     stalls_hazard(i-1);
                     if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
-                        fill(i,j,1,0,0,0,0);
+                        //fill(i,j,1,0,0,0,0);
+                         if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+
                     }
                     else{
-                        fill(i,j,0,0,0,0,0);
+                        //fill(i,j,0,0,0,0,0);
+                         if(res!=0){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
+                    }
+                }
+
+                if(pipeline[i][0].substr(0,2)=="jr"){
+                       //data and structural hazards not possible in jr
+                       int res=memory_hazard(i-1);
+                    stalls_hazard(i-1);
+                    if(branchhazard(pipeline[i-1][0]) && branch_flag==1){
+                        //fill(i,j,1,0,0,0,0);
+                         if(res!=0){
+                                   fill(i,j,1,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,1,0,0,0,0);
+                                }
+
+                    }
+                    else{
+                        //fill(i,j,0,0,0,0,0);
+                         if(res!=0){
+                                   fill(i,j,0,0,res,0,0);
+                                }
+                                else{
+                                    fill(i,j,0,0,0,0,0);
+                                }
                     }
                 }
 
@@ -1357,8 +1783,11 @@ class mipsSimulator{
 
             int pipeRow = 0;
             while(programCounter<=NumberOfInstructions){
-                string current_instruction = readInstruction(InputProgram[programCounter-1]); 
-                processInstruction(current_instruction);
+                string current_instruction = readInstruction(InputProgram[programCounter-1]);
+                miss=-1; 
+                processInstruction(current_instruction);//miss= 0 1 2
+                miss_arr[pipeRow]=miss;
+
                 //cout << current_instruction << endl;
                 pipeline[pipeRow][0]=current_instruction;
                 pipeRow++;
