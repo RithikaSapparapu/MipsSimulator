@@ -6,51 +6,30 @@ int register_values[32]={0};
 string REG[32]={"zero","at","v0","v1","a0","a1","a2","a3","t0","t1","t2","t3","t4","t5","t6","t7","s0","s1","s2","s3","s4","s5","s6","s7","t8","t9","k0","k1","gp","sp","fp","ra"};
 
 
-string pipeline[500][1000];
+string pipeline[5000][10000];
 
 class mipsSimulator{
-    public:
-        int MEM[1024]={0};
-        //------------------------------------
-        int cache1[1024]={0};
-        int tag1[1024]={-1};
-        int cache2[1024]={0}; 
-        int tag2[1024]={-1};
-        int counter1[1024]={0};
-        int counter2[1024]={0};
-        int cache1Size, cache2Size, block1Size, block2Size;
-        int associativity;
-        int totalInts1, totalInts2;
-        int blockInts1, blockInts2;
-        int numblocks1, numblocks2;
-        int accessLatency1, accessLatency2; //inputed as number of cycles needed to go to L1 and L2
-        int memTime; //number of cycles needed to go to the main memory
-
-        int miss = -1; //this could take only three values
-        // miss=0 for a hit in cache l1
-        //miss=1 for a miss in l1 and hit in l2;
-        //miss=2 for a miss in l1 and l2
-
-        //--------------------------------------
-        int programCounter;
-        int NumberOfInstructions;
-        int branch_flag;
-        int MaxLength;//10000
-        vector<string> InputProgram; //to store the input program
-        vector<string>Input_ins;
-        int mainindex=0;
-        struct Memoryword{
-            string value;
-            string address;//pc line number
+public:
+    int MEM[1024]={0};
+       int programCounter;
+       int NumberOfInstructions;
+       int branch_flag;
+       int MaxLength;//10000
+       vector<string> InputProgram; //to store the input program
+       vector<string>Input_ins;
+       int mainindex=0;
+       struct Memoryword{
+           string value;
+           string address;//pc line number
         };
         struct Label{
-            string labelname;
-            string address;
+           string labelname;
+           string address;
         };
         vector<struct Memoryword>Mem;
         vector<struct Label>labeltable;
 
-        mipsSimulator(string fileName, int cache1Size,int cache2Size,int block1Size,int block2Size,int accessLatency1,int accessLatency2,int memTime){
+        mipsSimulator(string fileName){
         programCounter=0;
         NumberOfInstructions=0;
         MaxLength=10000;
@@ -72,224 +51,8 @@ class mipsSimulator{
             InputProgram.push_back(tempString); //store in InputProgram
         }
         InputFile.close();
-
-        //--------------------------------------
-        cache1Size=cache1Size; 
-        cache2Size=cache2Size; 
-        block1Size=block1Size; 
-        block2Size=block2Size;
-        accessLatency1=accessLatency1; 
-        accessLatency2=accessLatency2;
-        memTime=memTime;
-        totalInts1 = cache1Size/4;
-        totalInts2 = cache2Size/4;
-        blockInts1=block1Size/4;
-        blockInts2=block2Size/4;
-        numblocks1=cache1Size/block1Size;
-        numblocks2=cache2Size/block2Size;
-
-        //--------------------------------------
         }
-
-        int nearest(int addrs){
-            while(addrs%blockInts1!=0){
-                addrs--;
-            }
-            return addrs;
-        }
-
-        bool search1(int addrs){
-            for(int i=0;i<numblocks1;i++){
-                if(tag1[i]==nearest(addrs)){
-                   return true; 
-                }
-            }
-            return false;
-        }
-
-        bool search2(int addrs){
-            for(int i=0;i<numblocks2;i++){
-                if(tag2[i]==nearest(addrs)){
-                   return true; 
-                }
-            }
-            return false;
-        }
-
-        int minimum(int arr[], int n){
-            int min=arr[0];
-            for(int i=0; i<n; i++){
-                if(arr[i]<=min)
-                    min=arr[i];
-            }
-            int j;
-            for(j=0; j<n; j++){
-                if(arr[j]==min)
-                    break;
-            }
-            return j;
-        }
-
-        void incrementcounter1(int adrs){
-            for(int i=0;i<numblocks1;i++){
-                if(tag1[i]==adrs){
-                    counter1[i]++;
-                    break;
-                }
-            }
-        }
-
-        void L2toL1(int addrs){
-            int i,j,count;
-            for(i=0;i<numblocks2;i++){
-                if(tag2[i]==nearest(addrs))
-                    break;
-            }
-            int k1,k2;
-            for(j=0;j<numblocks1;j++){
-                if(tag1[j]==-1){
-                    tag1[j]=tag2[i];
-                    tag2[i]=-1;
-
-                    k1=blockInts1*j;
-                    k2=blockInts2*i;
-                    for(int k=0; k<blockInts1; k++){
-                        cache1[k1]=cache2[k2];
-                        cache2[k2]=0;
-                        k1++;
-                        k2++;
-                    }
-                    counter2[i]=0;
-                    counter1[j]=1;
-                    break;
-                }
-            }
-            if(j==numblocks1){
-                //lru
-                //check with the counter in cache1, the least one will be pushed 
-                //to cache2(if full, we again apply lru for cache2) and then we put 
-                // new one in the place that has been emptied.
-                int tempcount1, temptag1, tempInts1[blockInts1];
-                int minIndex = minimum(counter1[], numblocks1);
-                j=minIndex;
-                k1=blockInts1*j;
-                k2=blockInts2*i;
-                //copy the contents of the block that is being kicked out of L1
-                //as these are to be put in L2
-                temptag1 = tag1[j];
-                tempcount1 = counter1[j];
-                for(int m=0; m<blockInts1; m++){
-                    tempInts1[m]= cache1[k1];
-                    k1++;
-                }
-                //copy from L2 to L1
-                tag1[j]=tag2[i];
-                k1=blockInts1*j;
-                k2=blockInts2*i;
-                for(int k=0; k<blockInts1; k++){
-                    cache1[k1]=cache2[k2];
-                    cache2[k2]=0;
-                    k1++;
-                    k2++;
-                }
-                counter1[j]=counter2[i];
-                counter1[j]++;
-                //copy back the contents of temp into the block that was emptied in L2
-                tag2[i] = temptag1;
-                counter2[i] = tempcount1;
-                k2=blockInts2*i;
-                for(int m=0; m<blockInts2; m++){
-                    cache2[k2] = tempInts1[m];
-                    k2++;
-                }
-            }
-        }
-
-        void memtoL1(int addrs){
-            int j,k1,k2;
-            for(j=0;j<numblocks1,j++){
-                if(tag1[j]==-1){
-                    k1 = blockInts1*j;
-                    tag1[j]=nearest(addrs);
-                    counter1[j]=1;
-                    for(int k=0; k<blockInts1; k++){
-                        cache1[k1]=MEM[addrs];
-                        k1++;
-                        addrs++;
-                    }
-                    break;
-                }
-            }
-            int i; //i for cache L2
-            if(j==numblocks1){  //if L1 is full
-                //lru
-                int minIndex1 = minimum(counter1[], numblocks1);
-                int tempcount1, temptag1, tempInts1[blockInts1];
-                j=minIndex1;
-                k1=blockInts1*j;
-                //copy the contents of the block that is being kicked out of L1
-                //as these are to be put in L2
-                temptag1 = tag1[j];
-                tempcount1 = counter1[j];
-                for(int m=0; m<blockInts1; m++){
-                    tempInts1[m]= cache1[k1];
-                    k1++;
-                }
-                //bring new block from them memory and put it cache
-                tag1[j]=nearest(addrs);
-                counter1[j]=1;
-                for(int k=0; k<blockInts1; k++){
-                    cache1[k1]=MEM[addrs];
-                    k1++;
-                    addrs++;
-                }
-                //copy back contents in temp to L2
-                for(i=0;i<numblocks2;i++){
-                    if(tag2[i]==-1){
-                        tag2[i] = temptag1;
-                        counter2[i] = tempcount1;
-                        k2=blockInts2*i;
-                        for(int m=0; m<blockInts2; m++){
-                            cache2[k2] = tempInts1[m];
-                            k2++;
-                        }
-                        break;
-                    }
-                }
-                if(i==numblocks2){  //if L2 is full, apply lru again
-                    int minIndex2 = minimum(counter2[], numblocks2);
-                    i=minIndex2;
-                    tag2[i] = temptag1;
-                    counter2[i] = tempcount1;
-                    k2=blockInts2*i;
-                    for(int m=0; m<blockInts2; m++){
-                        cache2[k2] = tempInts1[m];
-                        k2++;
-                    }
-                }
-            }
-        }
-
-        void updateInL1(int addrs,int val){
-            int j;
-            for(j=0;j<numblocks1;j++){
-                if(tag1[j]==nearest(addrs))
-                    break;
-            }
-            int k1 = blockInts1*j;
-            cache1[k1 + (addrs-nearest(addrs))] = val;
-        }
-
-        void updateInL2(int addrs,int val){
-            int i;
-            for(i=0;i<numblocks2;i++){
-                if(tag1[i]==nearest(addrs))
-                    break;
-            }
-            int k1 = blockInts2*i;
-            cache2[k1 + (addrs-nearest(addrs))] = val;
-        }
-
+        
         string readInstruction(string str){
             if(str.find("#")!=-1){ //remove comments
                     str=str.substr(0,str.find("#"));
@@ -297,6 +60,11 @@ class mipsSimulator{
             str.erase(remove(str.begin(), str.end(), ' '), str.end());
             str.erase(remove(str.begin(), str.end(), ','), str.end());
             str.erase(remove(str.begin(), str.end(), '$'), str.end());
+           return str;
+        }
+
+        string readArrayinstruction(string str){
+            str.erase(remove(str.begin(), str.end(), ' '), str.end());
            return str;
         }
 
@@ -313,17 +81,16 @@ class mipsSimulator{
             int dataStart=0; //line number for start of data section
             int textStart=0;
 
-
-
             for(int k=0;k<InputProgram.size();k++){
                 if(InputProgram[k]=="main:")
                 mainindex=k;
             }
-        int p_count=mainindex+1;
-        for(int k=p_count;k<InputProgram.size();k++){
-            string current_instrucn=readInstruction(InputProgram[k]);
-            Input_ins.push_back(current_instrucn);
-        }
+
+            int p_count=mainindex+1;
+            for(int k=p_count;k<InputProgram.size();k++){
+                string current_instrucn=readInstruction(InputProgram[k]);
+                Input_ins.push_back(current_instrucn);
+            }
 
             for(i=0;i<NumberOfInstructions;i++){
                 string current_instruction="";
@@ -347,7 +114,7 @@ class mipsSimulator{
                 for(i=dataStart+1;i<NumberOfInstructions;i++){
                     string current_instruction="";
                     current_instruction=InputProgram[i];
-                    current_instruction = readInstruction(current_instruction);
+                    current_instruction = readArrayinstruction(current_instruction);
                     arrayindex=current_instruction.find(":");//array:.word9315
                     wordindex=current_instruction.find(".word");
                     int storeline;
@@ -360,12 +127,20 @@ class mipsSimulator{
                         }
                     }
                     else{
-                        string num=current_instruction.substr(arrayindex+6);//array:.word9135
+                        string num=current_instruction.substr(arrayindex+6);//9,3,11,35,2,411
                         //lets assume array values are <10
                         int k=0;
-                        for(int i=0;i<num.length();i++){
-                            MEM[k]=stoi(num.substr(i,1));
-                            k++;
+                        while(num.length()!=0){
+                            int found=num.find(',');
+                            if(found != string::npos){
+                                MEM[k]=stoi(num.substr(0,found));
+                                num=num.substr(found+1);
+                                k++;
+                            }
+                            else{
+                                MEM[k]=stoi(num.substr(0));
+                                num=num.substr(num.length());
+                            }
                         }
                     } 
                 }
@@ -509,6 +284,8 @@ class mipsSimulator{
                       programCounter++;
                       return;
             }
+
+
             if(current_instruction.substr(0,4)=="addi"){//addit2t34
                 string rs,rd,imm;
                 int immediate;
@@ -533,7 +310,11 @@ class mipsSimulator{
                 register_values[reg_store[0]]=immediate+register_values[reg_store[1]];
                 programCounter++;
                 return;
-            }       
+            }
+
+            
+            
+            
             if(current_instruction.substr(0,3)=="beq"){
                 string st;
                 int reg_store[2]={-1};
@@ -570,6 +351,7 @@ class mipsSimulator{
                 }
                 return;
             }
+
             if(current_instruction.substr(0,3)=="bne"){
                 string st;
                 int reg_store[2]={-1};
@@ -605,6 +387,7 @@ class mipsSimulator{
                 }
                 return;
             }
+
             if(current_instruction.substr(0,1)=="j" && current_instruction.substr(1,1)!="r"){
               
                 string st = current_instruction.substr(1);
@@ -618,13 +401,12 @@ class mipsSimulator{
                return;
 
             }
-            
-            if(current_instruction.substr(0,2)=="lw"){
-                string rd,rs,offset;
-                rd=current_instruction.substr(2,2);
-                int index=current_instruction.find("(");
-                rs=current_instruction.substr(index+1,2);
-                offset=current_instruction.substr(4,index-4);
+           if(current_instruction.substr(0,2)=="lw"){
+                  string rd,rs,offset;
+                  rd=current_instruction.substr(2,2);
+                  int index=current_instruction.find("(");
+                  rs=current_instruction.substr(index+1,2);
+                  offset=current_instruction.substr(4,index-4);
                 int offs = stoi(offset);
                 int value;
                 int reg_store[2]={-1};
@@ -637,26 +419,8 @@ class mipsSimulator{
                 value = register_values[reg_store[0]];
                 register_values[reg_store[1]] = MEM[(offs + value)/4];
                 programCounter++;
-
-                //----------------------------------------
-                int adrs;
-                adrs = (offs + value)/4;
-                if(search1(adrs) == true){//hit in L1
-                    miss=0;
-                    incrementcounter1(adrs);
-                }
-                else if(search2(adrs) == true){//hit in L2 but was a miss in L1
-                    miss=1; 
-                    L2toL1(adrs); 
-                }
-                else{
-                    miss=2;
-                    memtoL1(adrs);
-                }
-                //----------------------------------------
                 return;
              }
-
             if(current_instruction.substr(0,2)=="sw"){
                   string rd,rs,offset;
                   rs=current_instruction.substr(2,2);
@@ -676,29 +440,8 @@ class mipsSimulator{
                 value = register_values[reg_store[1]];
                 MEM[(offs + value)/4]=register_values[reg_store[0]];
                 programCounter++;
-
-                //---------------------------------------
-                int adrs, value1;
-                value1 = register_values[reg_store[0]];
-                adrs = (offs + value)/4;
-                if(search1(adrs) == true){//hit in L1
-                    miss=0;
-                    incrementcounter1(adrs);
-                    updateInL1(adrs,value1);
-                }
-                else if(search2(adrs) == true){//hit in L2 but was a miss in L1
-                    miss=1; 
-                    L2toL1(adrs);
-                    updateInL2(adrs,value1); 
-                }
-                else{
-                    miss=2;
-                    memtoL1(adrs);
-                }
-                //----------------------------------------
                 return;
             }
-
             if(current_instruction.substr(0,3)=="slt"){
                 string rd,src1,src2;
                 rd=current_instruction.substr(3,2);
@@ -815,7 +558,7 @@ class mipsSimulator{
             }
             pipeline[x][y]="WB";
         }
-      
+
         string hazard(string ins){
             if(ins.substr(0,4)=="addi"){
                 return ins.substr(4,2);
@@ -857,7 +600,7 @@ class mipsSimulator{
         void stalls_hazard(int ins_row){
             int IF,ID,EX,MEM;
             int clk_len=0;
-            for(int j=1;j<1000;j++){
+            for(int j=1;j<10000;j++){
                 if(pipeline[ins_row][j]=="WB")
                   clk_len=j;
             }
@@ -1328,7 +1071,7 @@ class mipsSimulator{
                     }
                 }
 
-                for(int q=1; q<1000; q++){
+                for(int q=1; q<10000; q++){
                     if(pipeline[i][q]=="IF"){
                             clock1=q+1;
                     }
@@ -1366,19 +1109,19 @@ class mipsSimulator{
 
             fillPipeline(pipeRow, flag);
 
-            int cnt=0;
-            for(int j=1;j<1000;j++){
+           int cnt=0;
+            for(int j=1;j<10000;j++){
                 if(pipeline[pipeRow-1][j] == "WB"){
                     cout << "Total number of clock cycles: " << j << endl<<endl;
                     cnt=j;
                 }
             }
 
-            string stallInstruction[500];
+            string stallInstruction[5000];
             int count=0;
             int k=0;
             for(int i=0; i<pipeRow ;i++){
-                for(int j=1;j<1000;j++){
+                for(int j=1;j<10000;j++){
                     if(pipeline[i][j]=="stall"){
                         count++;
                         stallInstruction[k] = pipeline[i][0];
@@ -1404,6 +1147,8 @@ class mipsSimulator{
                     if(MEM[i]!=0){
                          cout<<MEM[i]<<" ";
                     }
+                    if(MEM[i]==0)
+                        break;
                 }
                 cout<<endl;
             return;
@@ -1411,8 +1156,7 @@ class mipsSimulator{
 };
 int main(){
     cout<<"Welcome to Team dynamic MIPS SIMULATOR!!"<<endl;
-    //mipsSimulator simulator("BubbleSort.asm");
-mipsSimulator simulator("mipsBubblesort.asm");
+    mipsSimulator simulator("BubbleSort.asm");
 
     int flagFrwd;
     cout << "ENTER 1 for Forwarding and 0 for NO forwarding" << endl;
