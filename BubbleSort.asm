@@ -1,5 +1,5 @@
 .data
-    array: .word 9, 3, 1    
+    array: .word 19, 13, 1, 6, 32, 21
 .text
 .globl main
 main:
