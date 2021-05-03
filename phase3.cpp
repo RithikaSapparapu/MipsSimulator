@@ -11,12 +11,12 @@ string pipeline[500][1000];
 class mipsSimulator{
     public:
         int MEM[1024]={0};
-        int miss_arr[500]={-1};
+        int miss_arr[500];
         //------------------------------------
         int cache1[1024]={0};
-        int tag1[1024]={-1};
+        int tag1[1024];
         int cache2[1024]={0}; 
-        int tag2[1024]={-1};
+        int tag2[1024];
         int counter1[1024]={0};
         int counter2[1024]={0};
         int cache1Size, cache2Size, block1Size, block2Size;
@@ -31,7 +31,10 @@ class mipsSimulator{
         // miss=0 for a hit in cache l1
         //miss=1 for a miss in l1 and hit in l2;
         //miss=2 for a miss in l1 and l2
-
+        double accessesL1=0;
+        double accessesL2=0;
+        double totalL1misses=0;
+        double totalL2misses=0;
         //--------------------------------------
         int programCounter;
         int NumberOfInstructions;
@@ -51,7 +54,7 @@ class mipsSimulator{
         vector<struct Memoryword>Mem;
         vector<struct Label>labeltable;
 
-        mipsSimulator(string fileName, int cache1Size,int cache2Size,int block1Size,int block2Size,int accessLatency1,int accessLatency2,int memTime){
+        mipsSimulator(string fileName, int Cache1Size,int Cache2Size,int Block1Size,int Block2Size,int AccessLatency1,int AccessLatency2,int MemTime, int Associativity){
         programCounter=0;
         NumberOfInstructions=0;
         MaxLength=10000;
@@ -75,19 +78,29 @@ class mipsSimulator{
         InputFile.close();
 
         //--------------------------------------
-        cache1Size=cache1Size; 
-        cache2Size=cache2Size; 
-        block1Size=block1Size; 
-        block2Size=block2Size;
-        accessLatency1=accessLatency1; 
-        accessLatency2=accessLatency2;
-        memTime=memTime;
-        totalInts1 = cache1Size/4;
-        totalInts2 = cache2Size/4;
-        blockInts1=block1Size/4;
-        blockInts2=block2Size/4;
-        numblocks1=cache1Size/block1Size;
-        numblocks2=cache2Size/block2Size;
+        cache1Size=Cache1Size; 
+        cache2Size=Cache2Size; 
+        block1Size=Block1Size; 
+        block2Size=Block2Size;
+        associativity=Associativity;
+        accessLatency1=AccessLatency1; 
+        accessLatency2=AccessLatency2;
+        memTime=MemTime;
+        totalInts1 = Cache1Size/4;
+        totalInts2 = Cache2Size/4;
+        blockInts1=Block1Size/4;
+        blockInts2=Block2Size/4;
+        numblocks1=Cache1Size/Block1Size;
+        numblocks2=Cache2Size/Block2Size;
+        for(int i=0;i<numblocks1;i++){
+            tag1[i]=-1;
+        }
+        for(int i=0;i<numblocks2;i++){
+            tag2[i]=-1;
+        }
+        for(int i=0; i<500; i++){
+            miss_arr[i]=-1;
+        }
 
         //--------------------------------------
         }
@@ -301,6 +314,11 @@ class mipsSimulator{
            return str;
         }
 
+        string readArrayinstruction(string str){
+            str.erase(remove(str.begin(), str.end(), ' '), str.end());
+           return str;
+        }
+
         void reportError(int line_number){
             cout<<"Error found in :"<<(line_number+1)<<": "<<InputProgram[line_number]<<endl;
         }
@@ -314,17 +332,15 @@ class mipsSimulator{
             int dataStart=0; //line number for start of data section
             int textStart=0;
 
-
-
             for(int k=0;k<InputProgram.size();k++){
                 if(InputProgram[k]=="main:")
                 mainindex=k;
             }
-        int p_count=mainindex+1;
-        for(int k=p_count;k<InputProgram.size();k++){
-            string current_instrucn=readInstruction(InputProgram[k]);
-            Input_ins.push_back(current_instrucn);
-        }
+            int p_count=mainindex+1;
+            for(int k=p_count;k<InputProgram.size();k++){
+                string current_instrucn=readInstruction(InputProgram[k]);
+                Input_ins.push_back(current_instrucn);
+            }
 
             for(i=0;i<NumberOfInstructions;i++){
                 string current_instruction="";
@@ -348,7 +364,7 @@ class mipsSimulator{
                 for(i=dataStart+1;i<NumberOfInstructions;i++){
                     string current_instruction="";
                     current_instruction=InputProgram[i];
-                    current_instruction = readInstruction(current_instruction);
+                    current_instruction = readArrayinstruction(current_instruction);
                     arrayindex=current_instruction.find(":");//array:.word9315
                     wordindex=current_instruction.find(".word");
                     int storeline;
@@ -361,12 +377,20 @@ class mipsSimulator{
                         }
                     }
                     else{
-                        string num=current_instruction.substr(arrayindex+6);//array:.word9135
+                        string num=current_instruction.substr(arrayindex+6);//9,3,11,35,2,411
                         //lets assume array values are <10
                         int k=0;
-                        for(int i=0;i<num.length();i++){
-                            MEM[k]=stoi(num.substr(i,1));
-                            k++;
+                        while(num.length()!=0){
+                            int found=num.find(',');
+                            if(found != string::npos){
+                                MEM[k]=stoi(num.substr(0,found));
+                                num=num.substr(found+1);
+                                k++;
+                            }
+                            else{
+                                MEM[k]=stoi(num.substr(0));
+                                num=num.substr(num.length());
+                            }
                         }
                     } 
                 }
@@ -399,8 +423,7 @@ class mipsSimulator{
                     reportError(i);
                 }
             }
-            if(current_section!=1) //if text section not found
-            {
+            if(current_section!=1){ //if text section not found
                 cout<<"Error: Text section does not exist or found unknown string"<<endl;
                 exit(1);
             }
@@ -645,18 +668,26 @@ class mipsSimulator{
                 if(search1(adrs) == true){//hit in L1
                     miss=0;
                     incrementcounter1(adrs);
+                    accessesL1++;
                 }
                 else if(search2(adrs) == true){//hit in L2 but was a miss in L1
                     miss=1; 
-                    L2toL1(adrs); 
+                    totalL1misses++;
+                    L2toL1(adrs);
+                    accessesL1++;
+                    accessesL2++; 
                 }
                 else{
                     miss=2;
+                    totalL1misses++;
+                    totalL2misses++;
                     memtoL1(adrs);
+                    accessesL1++;
+                    accessesL2++;
                 }
                 //----------------------------------------
                 return;
-             }
+            }
 
             if(current_instruction.substr(0,2)=="sw"){
                   string rd,rs,offset;
@@ -686,15 +717,23 @@ class mipsSimulator{
                     miss=0;
                     incrementcounter1(adrs);
                     updateInL1(adrs,value1);
+                    accessesL1++;
                 }
                 else if(search2(adrs) == true){//hit in L2 but was a miss in L1
                     miss=1; 
                     L2toL1(adrs);
                     updateInL2(adrs,value1); 
+                    totalL1misses++;
+                    accessesL1++;
+                    accessesL2++; 
                 }
                 else{
                     miss=2;
                     memtoL1(adrs);
+                    totalL1misses++;
+                    totalL2misses++;
+                    accessesL1++;
+                    accessesL2++;
                 }
                 //----------------------------------------
                 return;
@@ -883,7 +922,7 @@ class mipsSimulator{
             return flag;
         }
       
-       int memory_hazard(int ins_row){
+        int memory_hazard(int ins_row){
            int result=0;
            if(pipeline[ins_row][0].substr(0,2)=="lw"||pipeline[ins_row][0].substr(0,2)=="sw"){
                int temp_miss=miss_arr[ins_row];
@@ -1762,14 +1801,6 @@ class mipsSimulator{
             }
         }
 
-        void display(){
-           cout<<"Registers:"<<"        "<<"Value:"<<endl;
-           cout<<endl;
-           for(int i=0;i<32;i++){
-               cout<<REG[i]<<"                 "<<register_values[i]<<endl;
-           }
-        }
-
         void execute(int flag){
             preprocess();
             //int mainindex;
@@ -1827,6 +1858,10 @@ class mipsSimulator{
                     cout << stallInstruction[i] << endl;
                 }
             }
+
+            cout << "Miss rate for cache L1: " << totalL1misses/accessesL1 << endl;
+            cout << "Miss rate for cache L2: " << totalL2misses/accessesL2 << endl;
+        
             cout<<endl<<endl;
              cout<<"MEMORY:"<<endl;
                 for(int i=0;i<1024;i++){
@@ -1840,11 +1875,43 @@ class mipsSimulator{
 };
 int main(){
     cout<<"Welcome to Team dynamic MIPS SIMULATOR!!"<<endl;
+
+    int Cache1Size, Cache2Size, Block1Size, Block2Size, AccessLatency1, AccessLatency2, MemTime, associativity;
+
+    cout << "Enter the cache sizes of L1 and L2: " << endl;
+    cin >> Cache1Size >>  Cache2Size;
+    cout << "Enter the block sizes of L1 and L2: " << endl;
+    cin >> Block1Size >>  Block2Size;
+    cout << "Enter the accociativity: " << endl;
+    cin >> associativity;
+    cout << "Enter the access latencies of L1 and L2: " << endl;
+    cin >>  AccessLatency1 >> AccessLatency2;
+    cout << "Enter the memory access time: " << endl;
+    cin >> MemTime;
+
     //mipsSimulator simulator("BubbleSort.asm");
-mipsSimulator simulator("mipsBubblesort.asm");
+    mipsSimulator simulator("mipsBubblesort.asm",Cache1Size,Cache2Size,Block1Size,Block2Size,AccessLatency1,AccessLatency2,MemTime,associativity);
 
     int flagFrwd;
     cout << "ENTER 1 for Forwarding and 0 for NO forwarding" << endl;
     cin >> flagFrwd;
     simulator.execute(flagFrwd);
 }
+
+/*
+TESTCASE:
+
+Enter the cache sizes of L1 and L2:
+16 32
+Enter the block sizes of L1 and L2:
+8 8
+Enter the accociativity:
+2
+Enter the access latencies of L1 and L2:
+2 3
+Enter the memory access time:
+5
+ENTER 1 for Forwarding and 0 for NO forwarding
+0
+
+*/
